@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>ZamCalc Web</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+		<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+		<link rel="stylesheet" href="styles.css">
+	</head>
+	<body>
+		<div class="header">
+			<div class="logo-container">
+				<img class="logo-img" src="icons/zambas-removebg-preview.png" alt="logo">
+				<label style="color: var(--white); font-weight: bold;">ZamCalc Web</label>
+			</div>
+			<button class="loginBtn" id="loginBtn">LOGIN</button>
+		</div>
+		<div class="sidebar">
+			<div class="tabs">
+				<button class="tab_link" onclick="openTab(event, 'tab_home')" data-tooltip="Home Dashboard">
+					<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z""")/>></svg>
+				</button>
+				<button class="tab_link" onclick="openTab(event, 'tab_radiation')" data-tooltip="Radiation Calculation">
+					<svg viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z""")/>></svg>
+				</button>
+				<button class="tab_link" onclick="openTab(event, 'tab_resection')" data-tooltip="Resection Calculation">
+					<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z""")/>><circle cx="12" cy="12" r="3""")/>><path d="M12 1v4M12 19v4M1 12h4M19 12h4""")/>></svg>
+				</button>
+				<button class="tab_link" onclick="openTab(event, 'tab_traverse')" data-tooltip="Traverse Manager">
+					<svg viewBox="0 0 24 24"><path d="M17 7h-4v2h4c1.65 0 3 1.35 3 3s-1.35 3-3 3h-4v2h4c2.76 0 5-2.24 5-5s-2.24-5-5-5zm-6 8H7c-1.65 0-3-1.35-3-3s1.35-3 3-3h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-2zm-3-4h8v2H8z""")/>></svg>
+				</button>
+				<button class="tab_link" onclick="openTab(event, 'tab_transformation')" data-tooltip="Transformation Parameters">
+					<svg viewBox="0 0 24 24"><path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z""")/>></svg>
+				</button>
+				<button class="tab_link" onclick="openTab(event, 'tab_conversion')" data-tooltip="Coordinate Conversion">
+					<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v2H7v-2zm0 4h2v2H7v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2z""")/>></svg>
+				</button>
+				<button class="tab_link" onclick="openTab(event, 'tab_download')" data-tooltip="Download Data">
+					<svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z""")/>></svg>
+				</button>
+				<button class="tab_link" onclick="openAboutModal()" data-tooltip="About Zambas">
+					<svg viewBox="0 0 24 24">
+						<path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="currentColor"/>
+					</svg>
+				</button>
+			</div>
+		</div>
+		<div class="tab_container">
+			<div id="register_modal" class="table_area" style="display:none; max-width: 400px; margin: auto;">
+				<h3>Surveyor Registration</h3>
+				<form id="regForm" onsubmit="event.preventDefault(); registerUser();">
+					<div class="form_group">
+						<label>Username</label>
+						<input type="text" id="reg_user" required>
+					</div>
+					<div class="form_group">
+						<label>Password</label>
+						<input type="password" id="reg_pass" required>
+					</div>
+					<button type="submit" class="calc_btn">Create Account</button>
+					<p onclick="toggleRegModal(false)" style="cursor:pointer; color:var(--accent-gold); font-size:12px;">Back to Login</p>
+				</form>
+			</div>
+			<!-- Tab content defined here -->
+			<div class="tab_content" id="tab_home" style="display: block; padding: 0;">
+				<div id="map">
+				<div class="global_tools">
+						<button class="tableBtn" onclick="zoomToAllPoints()" data-tooltip="Zoom to All Points">
+							<svg viewBox="0 0 24 24"><path d="M15 3l2.3 2.3-2.89 2.87 1.42 1.42L18.7 6.7 21 9V3zM3 9l2.3-2.3 2.87 2.89 1.42-1.42L6.7 5.3 9 3H3zm6 12l-2.3-2.3 2.89-2.87-1.42-1.42L5.3 17.3 3 15v6zm12-6l-2.3 2.3-2.87-2.89-1.42 1.42 2.89 2.87L15 21h6z"/></svg>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="tab_content" id="tab_dynamic">
+				<div id="my_content">
+					<div class="computation_menu" id="dynamic_sub_menu"></div>
+					<div class="main_content">
+						<div class="table_area" id="table_modal">
+						    <div class="modal_header">
+						        <h3>Survey Points</h3>
+						        <button class="close_modal" onclick="toggleTable(false)">✕ Close</button>
+						    </div>
+
+						    <!-- Toolbar (Search + Buttons) -->
+						    <div class="table_controls_wrapper">
+						        <input class="searchBar" id="searchInput" type="text" placeholder="Search using Pt ID...">
+						        <div class="button_group">
+						            <button class="tableBtn" onclick="loadPoints(false)" data-tooltip="All Points">
+						                <svg viewBox="0 0 24 24"><path d="M4 18h17v-6H4v6zM4 5v6h17V5H4z"/></svg>
+						            </button>
+						            <button class="tableBtn" style="background:var(--accent-gold); color:white;" onclick="loadPoints(true)" data-tooltip="My Points">
+						                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+						            </button>
+						            <button class="tableBtn" style="background: #e74c3c; color: white; border:none;" onclick="bulkDelete()" data-tooltip="Delete Selected">
+						                <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+						            </button>
+						        </div>
+						    </div>
+						    
+						    <!-- TABLE AREA -->
+						    <div class="table_scroll">
+						        <table class="data_table">
+						            <thead>
+						                <tr>
+						                    <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+						                    <th>ID</th><th>Ptno</th><th>Eastings</th><th>Northings</th><th>Level</th><th>Action</th>
+						                </tr>
+						            </thead>
+						            <tbody><!-- Data from the database --></tbody>
+						        </table>
+						        <!-- PAGINATION (Now outside the scroll area) -->
+								<div class="pagination_controls">
+								    <button class="" id="prevPage" onclick="changePage(-1)">← Previous</button>
+								    <span id="pageInfo">Page 1</span>
+								    <button class="" id="nextPage" onclick="changePage(1)">Next →</button>
+								</div>
+						    </div>	    
+						</div>						
+						<div class="calculator" id="calculator">
+						    <!-- Form updates here -->
+						</div>
+						<button class="view_data_btn" onclick="toggleTable(true)">Select from Table</button>
+					</div>
+				</div>
+			</div>
+			<div class="tab_content" id="tab_download">
+				<div class="calculator" style="max-width: 500px; margin: 20px auto;">
+					<h3>Export Survey Data</h3>
+					<p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+						Download your entire points database as a CSV file compatible with Excel, AutoCAD, and other GIS software.
+					</p>
+					<button class="calc_btn" onclick="exportTableToCSV()">Download CSV (.csv)</button>
+				</div>
+			</div>
+			<div class="status_bar">
+				<div class="status_left">
+					<span id="status_indicator">●</span> 
+					<span id="status_text">System Ready</span>
+					<!--div class="global_tools">
+						<button class="tableBtn" onclick="zoomToAllPoints()" data-tooltip="Zoom to All Points">
+							<svg viewBox="0 0 24 24"><path d="M15 3l2.3 2.3-2.89 2.87 1.42 1.42L18.7 6.7 21 9V3zM3 9l2.3-2.3 2.87 2.89 1.42-1.42L6.7 5.3 9 3H3zm6 12l-2.3-2.3 2.89-2.87-1.42-1.42L5.3 17.3 3 15v6zm12-6l-2.3 2.3-2.87-2.89-1.42 1.42 2.89 2.87L15 21h6z"/></svg>
+						</button>
+						<button class="tableBtn" id="measureBtn" onclick="toggleMeasureTool()" data-tooltip="Measure Distance & Bearing">
+							<svg viewBox="0 0 24 24"><path d="M7,2V5H10V8H13V11H16V14H19V17H22V22H17V19H14V16H11V13H8V10H5V7H2V2H7M7,4H4V5H5V6H6V7H7V4M19,19V20H20V19H19M16,16V17H17V16H16M13,13V14H14V13H13M10,10V11H11V10H10M7,7V8H8V7H7M20,17H19V18H18V19H17V20H20V17Z"/></svg>
+						</button>
+					</div-->
+				</div>
+				<div class="status_right" onclick="openAboutModal()" data-tooltip="About Zambas">
+					&copy; 2026 Kapansa Bwalya
+				</div>
+			</div>
+			
+			<!-- Login Modal -->
+			<div id="loginModal" class="table_area" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:3001; max-width:400px; width:90%;">
+				<div class="modal_header">
+					<h3>Account Login</h3>
+					<button class="close_modal" onclick="toggleLoginModal(false)">✕</button>
+				</div>
+				<form onsubmit="handleLogin(event)">
+					<h3 style="text-align:center; margin-top:10px;">Surveyor Login</h3>
+					<div class="form_group">
+						<label>Username</label>
+						<input type="text" id="login_user" required placeholder="Enter username">
+					</div>
+					<div class="form_group">
+						<label>Password</label>
+						<input type="password" id="login_pass" required placeholder="Enter password">
+					</div>
+					<button type="submit" class="calc_btn">Sign In</button>
+					<p style="text-align:center; font-size:12px; margin-top:10px;">
+							Don't have an account? <span onclick="toggleRegModal(true)" style="color:var(--accent-gold); cursor:pointer;">Register here</span>
+					</p>
+				</form>
+			</div>
+	
+			<!-- Background Overlay -->
+			<div id="modalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:3000;" onclick="toggleLoginModal(false)"></div>
+			
+			<!-- Traverse report modal -->
+			<div id="reportModal" class="table_area" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:4000; width:95%; max-width:900px; height:85vh;">
+				<div class="modal_header">
+					<h3>Traverse Adjustment Report</h3>
+					<button class="close_modal" onclick="document.getElementById('reportModal').style.display='none'">✕</button>
+				</div>
+				<div id="print_header" style="display:none; text-align:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:20px;">
+					<h2>ZAMBAS WEB</h2>
+					<p>Project: Link Traverse Adjustment | Date: ${new Date().toLocaleDateString()}</p>
+				</div>
+				<div id="report_summary" style="padding:10px; background:#f8f9fa; border-bottom:1px solid #ddd; font-family:monospace; font-size:12px;">
+					<!-- Misclosure data here -->
+				</div>
+				<div class="table_scroll" style="height:calc(100% - 120px);">
+					<table class="data_table" id="report_table">
+					    <thead>
+					        <tr>
+					            <th>From-To</th>
+					            <th>Obs. Ang</th>
+					            <th>Adj. Brg</th>
+					            <th>Dist</th>
+					            <th>Adj. Easting (Y)</th>
+					            <th>Adj. Northing (X)</th>
+					        </tr>
+					    </thead>
+					    <tbody></tbody>
+					</table>
+				</div>
+				<!-- Inside your #reportModal -->
+				<div style="display:flex; gap:10px; margin-top:10px;">
+					<button class="calc_btn" onclick="saveReportToDB()">Save All to Main Table</button>
+					<!-- New Print Button -->
+					<button class="calc_btn" style="background:var(--accent-gold);" onclick="window.print()">Print to PDF</button>
+				</div>
+			</div>
+			
+			<!-- Edit points modal -->
+			<div id="editModal" class="table_area" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:5000; max-width:400px; width:90%;">
+				<div class="modal_header">
+					<h3>Edit Point Details</h3>
+					<button class="close_modal" onclick="closeEditModal()">✕</button>
+				</div>
+				<form id="editForm" onsubmit="handleUpdate(event)">
+					<input type="hidden" id="edit_id">
+					<div class="form_group">
+					    <label>Point Number</label>
+					    <input type="text" id="edit_pt_no" required>
+					</div>
+					<div class="form_group">
+					    <label>Easting (Y)</label>
+					    <input type="number" step="0.001" id="edit_y" required>
+					</div>
+					<div class="form_group">
+					    <label>Northing (X)</label>
+					    <input type="number" step="0.001" id="edit_x" required>
+					</div>
+					<div class="form_group">
+					    <label>Elevation (Z)</label>
+					    <input type="number" step="0.001" id="edit_z" required>
+					</div>
+					<div class="form_group">
+						<label>Coordinate Datum</label>
+						<div class="selection_toggle">
+							<button type="button" id="btn_wgs" class="tableBtn active_sub" onclick="setDatum(4326)">WGS 84 (GPS)</button>
+							<button type="button" id="btn_arc" class="tableBtn" onclick="setDatum(20935)">Arc 1950 (Legacy)</button>
+						</div>
+						<input type="hidden" id="edit_srid" value="4326">
+					</div>
+					<button type="submit" class="calc_btn">Update Database</button>
+				</form>
+			</div>
+			
+			<!-- Confirm Delete Modal -->
+			<div id="deleteModal" class="modal">
+				<div class="modal-content" style="max-width: 400px; text-align: center;">
+					<div style="font-size: 3rem; color: #e74c3c; margin-bottom: 15px;">⚠️</div>
+					<h3 style="margin-top: 0;">Confirm Delete</h3>
+					<p style="color: var(--text-muted); font-size: 14px;">
+						Are you sure you want to delete Point <b id="del_pt_name"></b>? 
+						This action cannot be undone.
+					</p>
+					<div style="display: flex; gap: 10px; margin-top: 20px;">
+						<button class="tableBtn" style="flex: 1; height: 40px;" onclick="closeDeleteModal()">Cancel</button>
+						<button class="calc_btn" style="flex: 1; background: #e74c3c;" id="confirmDeleteBtn">Delete Now</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- The About Modal -->
+			<div id="aboutModal" class="modal">
+				<div class="modal-content">
+					<div class="modal-header">
+						<span class="close-btn" onclick="closeAboutModal()">&times;</span>
+						<h2 style="margin:0; font-size: 1.2rem;">About Zambas Web</h2>
+					</div>
+					<div class="modal-body">
+						<p><strong>The Evolution of a Legacy</strong><br>
+						Zambas Web is a modern, cloud-based port of the <b>Zambas 2.2</b> software, originally released on <b>May 29, 1994</b>, by <b>Manter Elektronik HB</b> in Uppsala, Sweden.</p>			
+						<p>This project preserves the spirit of the original 1994 tool—built for the <b>Casio FX-800P</b> pocket computer—while modernizing the functional logic and mathematical formulas for 2026 standards using advanced AI auditing. It transforms a legacy text-based interface into a modern GIS platform.</p>
+						<div class="credits-box">
+						    <p><b>Original Author:</b> Manter Elektronik HB (Uppsala, Sweden)</p>
+						    <p><b>Modernization & Development:</b> Kapansa Bwalya</p>
+						    <p><b>Platform:</b> Web / GIS Integration</p>
+						</div>		
+						<p class="disclaimer"><i>This is a non-commercial preservation project. All original intellectual property is acknowledged as belonging to the respective owners. If you are the rights holder, please contact kapansa.bwalya@unza.ac.zm for removal.</i></p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<script src="main.js"></script>
+		<script src="about.js"></script>
+	</body>
+</html>
