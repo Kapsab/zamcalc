@@ -91,7 +91,8 @@ const ProjCorrection = {
 
 function initMap() {
 	//---- Leaflet web map ----//
-	map = L.map('map').setView([-14.82563, 28.54925], 6);
+	map = L.map('map', { zoomControl: false }).setView([-14.82563, 28.54925], 6);
+	L.control.zoom ({ position: 'topright' }).addTo(map);
 	L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 		attribution: '&copy OpenStreetMap'
 	}).addTo(map);
@@ -1153,22 +1154,36 @@ async function login(username, password) {
 }
 
 async function registerUser() {
-	const user = document.getElementById('reg_user').value;
-	const pass = document.getElementById('reg_pass').value;
+    // 1. Get references to the input elements themselves
+    const userField = document.getElementById('reg_user');
+    const passField = document.getElementById('reg_pass');
 
-	const response = await fetch('/api/register', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username: user, password: pass })
-	});
+    const user = userField.value;
+    const pass = passField.value;
 
-	if (response.ok) {
-		alert("Registration successful! You can now log in.");
-		toggleRegModal(false);
-	} else {
-		alert("Registration failed. Username might be taken.");
-	}
+    try {
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+
+        if (response.ok) {
+            alert("Registration successful! You can now log in.");
+            toggleRegModal(false);
+        } else {
+            alert("Registration failed. Username might be taken.");
+        }
+    } catch (error) {
+        console.error("Network error during registration:", error);
+        alert("A network error occurred. Please try again.");
+    } finally {
+        // 2. CLEAR CREDENTIALS HERE (Runs automatically on success, failure, or crash)
+        userField.value = '';
+        passField.value = '';
+    }
 }
+
 
 function toggleRegModal(show) {
     const regModal = document.getElementById('register_modal');
