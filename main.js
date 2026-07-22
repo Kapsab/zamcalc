@@ -1185,6 +1185,7 @@ async function registerUser() {
 }
 
 
+
 function toggleRegModal(show) {
     const regModal = document.getElementById('register_modal');
     const loginModal = document.getElementById('loginModal');
@@ -2049,10 +2050,13 @@ function runCoordinateTransform(type) {
         if (isNaN(y) || isNaN(x)) return alert("Pick a point first!");
 
         if (type === 'Lo-UTM') {
-            const g = GE.gridToGeog(-y, -x, 0, 0, 1, cmOrg * (Math.PI/180));
+            let g = GE.gridToGeog(-y, -x, 0, 0, 1, cmOrg * (Math.PI/180));
+            g = GE.transformDatum(g, 'Cape', 'WGS84');
             res = GE.geogToGrid(g.lat, g.lon, 500000, 10000000, 0.9996, cmTar * (Math.PI/180));
         } else {
-            const g = GE.gridToGeog(y, x, 500000, 10000000, 0.9996, cmOrg * (Math.PI/180));
+            let g = GE.gridToGeog(y, x, 500000, 10000000, 0.9996, cmOrg * (Math.PI/180));
+            g = GE.transformDatum(g, 'WGS84', 'Cape');
+            
             const lo = GE.geogToGrid(g.lat, g.lon, 0, 0, 1, cmTar * (Math.PI/180));
             res = { y: -lo.y, x: -lo.x };
         }
