@@ -2050,10 +2050,10 @@ function runCoordinateTransform(type) {
 
         if (type === 'Lo-UTM') {
             const g = GE.gridToGeog(-y, -x, 0, 0, 1, cmOrg * (Math.PI/180));
-            res = GE.geogToGrid(g.lat, g.lon, 500000, 10000000, 0.9996, cmTar);
+            res = GE.geogToGrid(g.lat, g.lon, 500000, 10000000, 0.9996, cmTar * (Math.PI/180));
         } else {
             const g = GE.gridToGeog(y, x, 500000, 10000000, 0.9996, cmOrg * (Math.PI/180));
-            const lo = GE.geogToGrid(g.lat, g.lon, 0, 0, 1, cmTar);
+            const lo = GE.geogToGrid(g.lat, g.lon, 0, 0, 1, cmTar * (Math.PI/180));
             res = { y: -lo.y, x: -lo.x };
         }
     } else if (type === 'geo-Lo' || type === 'geo-UTM') {
