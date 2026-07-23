@@ -1184,8 +1184,6 @@ async function registerUser() {
     }
 }
 
-
-
 function toggleRegModal(show) {
     const regModal = document.getElementById('register_modal');
     const loginModal = document.getElementById('loginModal');
@@ -1992,25 +1990,40 @@ function calculateSlopeCorrection() {
 
 const GeodeticEngine = {
     // Spheroid Coefficients (Line 30020)
-    A: 6367386.644, B: 16300.7, C: 17.387, D: 0.023,
-    AA: 6378137.0, E2: 0.00669438, // WGS84 Constants
+    ellipsoids: {
+        clarke1880: {
+            a: 6378249.14533,	// Legal Clarke 1880 Modified
+            b: 6356514.96672,	// Corresponding semi-minor axis
+            esq: 0.006803511283, // Precise eccentricity squared
+            // Meridian distance coefficients for Clarke 1880
+            A: 6367386.6437, B: 16300.696, C: 17.387, D: 0.023	// Exact NGI meridian arc constants
+        },
+        wgs84: {
+            a: 6378137.0,
+            b: 6356752.314,
+            esq: 0.006694380,
+            // Meridian distance coefficients for WGS84
+            A: 6367449.146, B: 16038.509, C: 16.833, D: 0.022
+        }
+    },
 
     // Grid to Geographicals (Lines 30800-30890)
-    gridToGeog: function(y, x, y0, x0, k0, lambda0) {
+    gridToGeog: function(y, x, y0, x0, k0, lambda0, ellipName = 'clarke1880') {
+        const ellip = this.ellipsoids[ellipName];
         let mf = (x - x0) / k0;
-        let fi = mf / this.A;
+        let fi = mf / ellip.A;
         let dfi, mp;
 
         // Iteration loop (Line 30830)
         do {
-            mp = (this.A * fi - this.B * Math.sin(2 * fi) + this.C * Math.sin(4 * fi) - this.D * Math.sin(6 * fi));
-            dfi = (mf - mp) / (this.A - 2 * this.B * Math.cos(2 * fi));
+            mp = (ellip.A * fi - ellip.B * Math.sin(2 * fi) + ellip.C * Math.sin(4 * fi) - ellip.D * Math.sin(6 * fi));
+            dfi = (mf - mp) / (ellip.A - 2 * ellip.B * Math.cos(2 * fi));
             fi += dfi;
         } while (Math.abs(dfi) > 1e-12);
 
-        let nu = this.AA / Math.sqrt(1 - this.E2 * Math.pow(Math.sin(fi), 2));
+        let nu = ellip.a / Math.sqrt(1 - ellip.esq * Math.pow(Math.sin(fi), 2));
         let h = (y - y0) / (k0 * nu);
-        let eta2 = (this.E2 * Math.pow(Math.cos(fi), 2)) / (1 - this.E2);
+        let eta2 = (ellip.esq * Math.pow(Math.cos(fi), 2)) / (1 - ellip.esq);
         let t2 = Math.pow(Math.tan(fi), 2);
 
         let lambda = lambda0 + (1 / Math.cos(fi)) * (h - (Math.pow(h, 3) / 6) * (1 + 2 * t2 + eta2));
@@ -2020,21 +2033,51 @@ const GeodeticEngine = {
     },
 
     // Geographicals to Grid (Lines 30900-30950)
-    geogToGrid: function(lat, lon, y0, x0, k0, lambda0Deg) {
+    geogToGrid: function(lat, lon, y0, x0, k0, lambda0Deg, ellipName = 'wgs84') {
+        const ellip = this.ellipsoids[ellipName];
         let fi = lat * (Math.PI / 180);
         let lambda = lon * (Math.PI / 180);
         let lambda0 = lambda0Deg * (Math.PI / 180);
 
         let j = (lambda - lambda0) * Math.cos(fi);
-        let eta2 = (this.E2 * Math.pow(Math.cos(fi), 2)) / (1 - this.E2);
+        let eta2 = (ellip.esq * Math.pow(Math.cos(fi), 2)) / (1 - ellip.esq);
         let t2 = Math.pow(Math.tan(fi), 2);
-        let mp = (this.A * fi - this.B * Math.sin(2 * fi) + this.C * Math.sin(4 * fi) - this.D * Math.sin(6 * fi));
-        let nu = this.AA / Math.sqrt(1 - this.E2 * Math.pow(Math.sin(fi), 2));
+        let mp = (ellip.A * fi - ellip.B * Math.sin(2 * fi) + ellip.C * Math.sin(4 * fi) - ellip.D * Math.sin(6 * fi));
+        let nu = ellip.a / Math.sqrt(1 - ellip.esq * Math.pow(Math.sin(fi), 2));
 
         let y = y0 + (k0 * nu) * (j + (Math.pow(j, 3) / 6) * (1 - t2 + eta2));
         let x = x0 + k0 * mp + (k0 * nu * Math.tan(fi)) * (Math.pow(j, 2) / 2);
 
         return { y, x };
+    },
+    
+    // 3-Parameter Molodensky Datum Shift Engine (South African / Zambian Region)
+    transformDatum: function(g, fromDatum, toDatum) {
+        // Translation parameters between Cape Datum and WGS84
+        let dx = -136.0, dy = -108.0, dz = -292.0;
+        
+        // Invert signs if transforming backwards from WGS84 to Cape
+        if (fromDatum === 'WGS84' && toDatum === 'Cape') {
+            dx = 136.0; dy = 108.0; dz = 292.0;
+        }
+
+        // Standard Molodensky Geodetic Transform approximation formula
+        const latRad = g.lat * (Math.PI / 180);
+        const lonRad = g.lon * (Math.PI / 180);
+        
+        const a = 6378137.0; // Mean Reference Radius
+        const esq = 0.00669438;
+        
+        const rn = a / Math.sqrt(1 - esq * Math.pow(Math.sin(latRad), 2));
+        const rm = a * (1 - esq) / Math.pow(1 - esq * Math.pow(Math.sin(latRad), 2), 1.5);
+        
+        const dLat = (-dx * Math.sin(latRad) * Math.cos(lonRad) - dy * Math.sin(latRad) * Math.sin(lonRad) + dz * Math.cos(latRad)) / rm;
+        const dLon = (-dx * Math.sin(lonRad) + dy * Math.cos(lonRad)) / (rn * Math.cos(latRad));
+        
+        return {
+            lat: g.lat + dLat * (180 / Math.PI),
+            lon: g.lon + dLon * (180 / Math.PI)
+        };
     }
 };
 
@@ -2050,16 +2093,26 @@ function runCoordinateTransform(type) {
         if (isNaN(y) || isNaN(x)) return alert("Pick a point first!");
 
         if (type === 'Lo-UTM') {
-            let g = GE.gridToGeog(-y, -x, 0, 0, 1, cmOrg * (Math.PI/180));
-            g = GE.transformDatum(g, 'Cape', 'WGS84');
-            res = GE.geogToGrid(g.lat, g.lon, 500000, 10000000, 0.9996, cmTar * (Math.PI/180));
-        } else {
-            let g = GE.gridToGeog(y, x, 500000, 10000000, 0.9996, cmOrg * (Math.PI/180));
-            g = GE.transformDatum(g, 'WGS84', 'Cape');
-            
-            const lo = GE.geogToGrid(g.lat, g.lon, 0, 0, 1, cmTar * (Math.PI/180));
-            res = { y: -lo.y, x: -lo.x };
-        }
+    // 1. Lo29 uses Cape Datum (clarke1880)
+    let g = GE.gridToGeog(-y, -x, 0, 0, 1, cmOrg * (Math.PI/180), 'clarke1880');
+    
+    // 2. Perform Datum shift matrix math
+    g = GE.transformDatum(g, 'Cape', 'WGS84');
+    
+    // 3. Project output onto WGS84 UTM system
+    res = GE.geogToGrid(g.lat, g.lon, 500000, 10000000, 0.9996, cmTar, 'wgs84');
+} else {
+    // 1. UTM begins natively on WGS84
+    let g = GE.gridToGeog(y, x, 500000, 10000000, 0.9996, cmOrg * (Math.PI/180), 'wgs84');
+    
+    // 2. Shift back to historical local space 
+    g = GE.transformDatum(g, 'WGS84', 'Cape');
+    
+    // 3. Output to Clarke 1880 Lo system parameters
+    const lo = GE.geogToGrid(g.lat, g.lon, 0, 0, 1, cmTar, 'clarke1880');
+    res = { y: -lo.y, x: -lo.x };
+}
+
     } else if (type === 'geo-Lo' || type === 'geo-UTM') {
         const lat = parseFloat(document.getElementById('geo_lat').value);
         const lon = parseFloat(document.getElementById('geo_lon').value);
@@ -2098,9 +2151,6 @@ async function renderMapPoints() {
     try {
         const response = await fetch('/api/map-points');
         const geojsonData = await response.json();
-
-        // Clear existing layers if necessary
-        // if (window.mapLayer) map.removeLayer(window.mapLayer);
 
         window.mapLayer = L.geoJSON(geojsonData, {
             pointToLayer: function (feature, latlng) {
