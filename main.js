@@ -9,6 +9,7 @@ let measureLine = null;
 let runningAngleSum = 0;
 let map;
 let mapLayer;
+let currentSearchTerm = '';
 const pointsPerPage = 8;
 
 window.helmertPairs = [];
@@ -989,20 +990,6 @@ function exportTableToCSV() {
 }
 
 async function deletePoint(btn, id) {
-    /*if (!confirm("Are you sure you want to delete this point?")) return;
-
-    try {
-        const response = await fetch(`/api/points/${id}`, { method: 'DELETE' });
-        if (response.ok) {
-            btn.closest('tr').remove(); // Remove row from table
-            document.getElementById('status_text').innerText = "Point deleted.";
-        } else {
-            const err = await response.json();
-            alert(err.error);
-        }
-    } catch (err) {
-        console.error("Delete failed:", err);
-    }*/
     // 1. Find the point name from the row
     const row = btn.closest('tr');
     const ptNo = row.cells[2].innerText;
@@ -1299,20 +1286,25 @@ async function handleLogout() {
 }
 
 // Attach this to your search bar in HTML or via JS
-document.getElementById('searchInput').addEventListener('input', function() {
-	const filter = this.value.toUpperCase();
-	const rows = document.querySelectorAll(".data_table tbody tr");
+document.getElementById('searchInput').addEventListener('input', debounce(function() {
+    currentSearchTerm = this.value;
+    
+    // Call your existing table fetch function, forcing it back to Page 1 with the new filter
+    if (typeof fetchAndRenderTable === 'function') {
+        fetchAndRenderTable(1, currentSearchTerm);
+    }
+}, 300)); // 300ms delay: waits until user stops typing for a split second
 
-	rows.forEach(row => {
-		// Index 1 is the 'pt_no' column
-		const ptNoCell = row.cells[2];
-		if (ptNoCell) {
-			const textValue = ptNoCell.textContent || ptNoCell.innerText;
-			// Show/hide based on match
-			row.style.display = textValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
-		}
-	});
-});
+// Simple utility function to prevent flooding your server with database requests
+function debounce(func, delay) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+}
+
 
 function removeLastAreaPoint() {
     if (!window.areaPoints || window.areaPoints.length === 0) return;
@@ -2335,6 +2327,21 @@ function toggleMeasureTool() {
     } else {
         map.getContainer().style.cursor = '';
         document.getElementById('status_text').innerText = "Measure Tool Disabled.";
+    }
+}
+
+async function fetchAndRenderTable(page = 1, search = '') {
+    try {
+        // Pass both pagination constraints AND search parameters to Express
+        const response = await fetch(`/api/survey-points?page=${page}&limit=10&search=${encodeURIComponent(search)}`);
+        const data = await response.json();
+        
+        // Your code to rebuild the <tr> table rows goes here...
+        // renderTableRows(data.points);
+        // updatePaginationUI(data.currentPage, data.totalPages);
+        
+    } catch (err) {
+        console.error("Error loading paginated global table:", err);
     }
 }
 

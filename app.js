@@ -147,9 +147,42 @@ app.post('/api/points', isAuthenticated, async (req, res) => {
 
 app.get('/api/points', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM survey_points ORDER BY id ASC');
-        res.json(result.rows);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const search = req.query.search || ''; // Captures string from frontend input
+        const offset = (page - 1) * limit;
+
+        // Structured SQL wildcard layout array
+        const searchValue = `%${search}%`;
+
+        // 1. Fetches filtered data rows matching search terms across ALL database entries
+        const dataQuery = `
+            SELECT id, pt_no, easting, northing, elevation 
+            FROM public.survey_points
+            WHERE pt_no ILIKE $1 
+            ORDER BY id ASC
+            LIMIT $2 OFFSET $3;
+        `;
+        
+        // 2. Synchronizes total pages pagination values matching search query constraints
+        const countQuery = `
+            SELECT COUNT(*) FROM public.survey_points
+            WHERE pt_no ILIKE $1;
+        `;
+
+        const dataRes = await pool.query(dataQuery, [searchValue, limit, offset]);
+        const countRes = await pool.query(countQuery, [searchValue]);
+
+        const totalRows = parseInt(countRes.rows[0].count);
+
+        res.json({
+            points: dataRes.rows,
+            totalRows: totalRows,
+            currentPage: page,
+            totalPages: Math.ceil(totalRows / limit)
+        });
     } catch (err) {
+        console.error("Global table search endpoint failure:", err.message);
         res.status(500).send('Database Error');
     }
 });
@@ -179,7 +212,7 @@ app.get('/api/map-points', isAuthenticated, async (req, res) => {
     try {
         const query = `
             SELECT id, pt_no, 
-            ST_AsGeoJSON(ST_Transform(geom, 4326))::json as location 
+            ST_AsGeoJSON(geom)::json as location 
             FROM survey_points
             WHERE geom IS NOT NULL`;
         
@@ -191,7 +224,6 @@ app.get('/api/map-points', isAuthenticated, async (req, res) => {
         	properties: { pt_no:row.pt_no }
         }));
         
-        //res.json(result.rows);
         res.json({ type: 'FeatureCollection', features });
     } catch (err) {
         res.status(500).json({ error: err.message });
