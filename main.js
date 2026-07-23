@@ -98,6 +98,44 @@ function initMap() {
 		attribution: '&copy OpenStreetMap'
 	}).addTo(map);
 	addMapCustomControls();
+	
+	map.on('click', function(e) {
+		if (window.isMeasuring) {
+			measurePoints.push(e.latlng);
+		
+			if (measurePoints.length === 1) {
+		    	document.getElementById('status_text').innerText = "First point set. Click second point.";
+			} else if (measurePoints.length === 2) {
+		    	const p1 = measurePoints[0];
+		    	const p2 = measurePoints[1];
+
+		    	// 1. Calculate Distance (Meters)
+		    	const dist = map.distance(p1, p2);
+
+				// 2. Calculate Bearing (True North)
+				// Standard formula: atan2(sin(Δλ)⋅cos(φ2), cos(φ1)⋅sin(φ2) − sin(φ1)⋅cos(φ2)⋅cos(Δλ))
+				const rad = Math.PI / 180;
+				const lat1 = p1.lat * rad, lat2 = p2.lat * rad;
+				const lon1 = p1.lng * rad, lon2 = p2.lng * rad;
+				const dLon = lon2 - lon1;
+				const y = Math.sin(dLon) * Math.cos(lat2);
+				const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+				let brg = Math.atan2(y, x) * (180 / Math.PI);
+				brg = (brg + 360) % 360; // Normalize to 0-360
+
+				// 3. Draw the line
+				if (typeof measureLine !== 'undefined' && measureLine) map.removeLayer(measureLine);
+				measureLine = L.polyline([p1, p2], { color: 'var(--accent-gold)', weight: 3, dashArray: '5, 10' }).addTo(map);
+
+				// 4. Update Status
+				const result = `Join: ${dist.toFixed(3)}m @ ${COGO.degToDms(brg)}`;
+				document.getElementById('status_text').innerText = result;
+				
+				// Reset for next measurement
+				measurePoints = [];
+			}
+		}
+	});
 }
 
 function openTab(evt, tabName) {
@@ -2299,44 +2337,6 @@ function toggleMeasureTool() {
         document.getElementById('status_text').innerText = "Measure Tool Disabled.";
     }
 }
-
-map.on('click', function(e) {
-    if (window.isMeasuring) {
-    	measurePoints.push(e.latlng);
-    
-    	if (measurePoints.length === 1) {
-        	document.getElementById('status_text').innerText = "First point set. Click second point.";
-    	} else if (measurePoints.length === 2) {
-        	const p1 = measurePoints[0];
-        	const p2 = measurePoints[1];
-
-        	// 1. Calculate Distance (Meters)
-        	const dist = map.distance(p1, p2);
-
-		    // 2. Calculate Bearing (True North)
-		    // Standard formula: atan2(sin(Δλ)⋅cos(φ2), cos(φ1)⋅sin(φ2) − sin(φ1)⋅cos(φ2)⋅cos(Δλ))
-		    const rad = Math.PI / 180;
-		    const lat1 = p1.lat * rad, lat2 = p2.lat * rad;
-		    const lon1 = p1.lng * rad, lon2 = p2.lng * rad;
-		    const dLon = lon2 - lon1;
-		    const y = Math.sin(dLon) * Math.cos(lat2);
-		    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-		    let brg = Math.atan2(y, x) * (180 / Math.PI);
-		    brg = (brg + 360) % 360; // Normalize to 0-360
-
-		    // 3. Draw the line
-		    if (typeof measureLine !== 'undefined' && measureLine) map.removeLayer(measureLine);
-		    measureLine = L.polyline([p1, p2], { color: 'var(--accent-gold)', weight: 3, dashArray: '5, 10' }).addTo(map);
-
-		    // 4. Update Status
-		    const result = `Join: ${dist.toFixed(3)}m @ ${COGO.degToDms(brg)}`;
-		    document.getElementById('status_text').innerText = result;
-		    
-		    // Reset for next measurement
-		    measurePoints = [];
-		}
-    }
-});
 
 function addMapCustomControls() {
     const CustomControl = L.Control.extend({
