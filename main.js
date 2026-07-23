@@ -1119,9 +1119,15 @@ function displayPage(page) {
     // Update UI info
     currentPage = page;
     
-    document.getElementById('pageInfo').innerText = `Page ${page} of ${totalPageCount}`;
+    const pageInfoEl = document.getElementById('pageInfo');
+    if (pageInfoEl) { pageInfoEl.innerText = `Page ${page} of ${totalPagesCount}`; }
     
-    updatePaginationControls();
+    // Disable buttons if at boundaries
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    
+    if (prevBtn) prevBtn.disabled = (page === 1);
+    if (nextBtn) nextBtn.disabled = (page >= totalPagesCount);
 }
 
 function nextPage() {
