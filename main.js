@@ -11,7 +11,7 @@ let runningAngleSum = 0;
 let map;
 let mapLayer;
 let currentSearchTerm = '';
-const pointsPerPage = 10;
+const pointsPerPage = 8;
 
 window.helmertPairs = [];
 window.tempOld = null;
@@ -1088,7 +1088,7 @@ async function loadPoints(page = 1, search = '', onlyMine = false) {
         totalPagesCount = data.totalPages || 1;
         
         displayPage(currentPage);
-        //updatePaginationControls()
+        updatePaginationControls()
         
         status.innerText = "Database Loaded Successfully";
     } catch (err) {
@@ -1125,6 +1125,18 @@ function displayPage(page) {
 function changePage(step) {
     currentPage += step;
     displayPage(currentPage);
+}
+
+function nextPage() {
+    if (currentPage < totalPagesCount) {
+        loadPoints(currentPage + 1, currentSearchTerm, false);
+    }
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        loadPoints(currentPage - 1, currentSearchTerm, false);
+    }
 }
 
 window.onload = async () => {
