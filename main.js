@@ -1088,7 +1088,7 @@ async function loadPoints(page = 1, search = '', onlyMine = false) {
         totalPagesCount = data.totalPages || 1;
         
         displayPage(currentPage);
-        updatePaginationControls()
+        //updatePaginationControls()
         
         status.innerText = "Database Loaded Successfully";
     } catch (err) {
