@@ -1097,34 +1097,31 @@ async function loadPoints(page = 1, search = '', onlyMine = false) {
     }
 }
 
+function updatePaginationControls() {
+    // Synchronize boundaries cleanly matching variables
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    
+    if (prevBtn) prevBtn.disabled = (currentPage === 1);
+    if (nextBtn) nextBtn.disabled = (currentPage >= totalPagesCount);
+}
+
 function displayPage(page) {
     const tableBody = document.querySelector(".data_table tbody");
     if (!tableBody) return;
     
     tableBody.innerHTML = "";	// Clear the existing rows before drawing new ones
 
-    // Calculate start and end indices
-    const start = (page - 1) * pointsPerPage;
-    const end = start + pointsPerPage;
-    const pageData = allPointsData.slice(start, end);
-
-    pageData.forEach(p => {
+    allPointsData.forEach(p => {
         addResultToTable(p.id, p.pt_no, p.easting, p.northing, p.elevation);
     });
 
     // Update UI info
     currentPage = page;
-    const totalPages = Math.ceil(allPointsData.length / pointsPerPage) || 1;
-    document.getElementById('pageInfo').innerText = `Page ${page} of ${Math.ceil(allPointsData.length / pointsPerPage)}`;
     
-    // Disable buttons if at boundaries
-    document.getElementById('prevPage').disabled = (page === 1);
-    document.getElementById('nextPage').disabled = (page >= totalpagesCount);
-}
-
-function changePage(step) {
-    currentPage += step;
-    displayPage(currentPage);
+    document.getElementById('pageInfo').innerText = `Page ${page} of ${totalPageCount}`;
+    
+    updatePaginationControls();
 }
 
 function nextPage() {
