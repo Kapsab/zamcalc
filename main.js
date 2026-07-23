@@ -1119,7 +1119,7 @@ function displayPage(page) {
     
     // Disable buttons if at boundaries
     document.getElementById('prevPage').disabled = (page === 1);
-    document.getElementById('nextPage').disabled = (end >= allPointsData.length);
+    document.getElementById('nextPage').disabled = (page >= totalpagesCount);
 }
 
 function changePage(step) {
