@@ -1088,9 +1088,13 @@ async function loadPoints(page = 1, search = '', onlyMine = false) {
         totalPagesCount = data.totalPages || 1;
         
         displayPage(currentPage);
-        updatePaginationControls()
+        updatePaginationControls();
         
-        status.innerText = "Database Loaded Successfully";
+        if (typeof renderMapPoints === "function") { renderMapPoints(allPointsData); }
+        
+        if (status) status.innerText = "Database Loaded Successfully";
+        
+        return allPointsData;
     } catch (err) {
         console.error("Load error:", err);
         status.innerText = "Error: Database Link Failed";
@@ -1151,8 +1155,10 @@ window.onload = async () => {
         
         if (data.loggedIn) {
             document.getElementById('status_text').innerText = `Logged in as ${data.username}`;
-            loadPoints();
-            renderMapPoints();	// I added this
+            
+            //const points = 
+            await loadPoints();
+            //renderMapPoints(points);	// I added this
         } else {
             toggleLoginModal(true);
         }
