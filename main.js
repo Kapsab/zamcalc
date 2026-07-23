@@ -8,6 +8,7 @@ let measurePoints = [];
 let measureLine = null;
 let runningAngleSum = 0;
 let map;
+let mapLayer;
 const pointsPerPage = 8;
 
 window.helmertPairs = [];
@@ -2093,36 +2094,34 @@ function runCoordinateTransform(type) {
         if (isNaN(y) || isNaN(x)) return alert("Pick a point first!");
 
         if (type === 'Lo-UTM') {
-    // 1. Lo29 uses Cape Datum (clarke1880)
-    let g = GE.gridToGeog(-y, -x, 0, 0, 1, cmOrg * (Math.PI/180), 'clarke1880');
-    
-    // 2. Perform Datum shift matrix math
-    g = GE.transformDatum(g, 'Cape', 'WGS84');
-    
-    // 3. Project output onto WGS84 UTM system
-    res = GE.geogToGrid(g.lat, g.lon, 500000, 10000000, 0.9996, cmTar, 'wgs84');
-} else {
-    // 1. UTM begins natively on WGS84
-    let g = GE.gridToGeog(y, x, 500000, 10000000, 0.9996, cmOrg * (Math.PI/180), 'wgs84');
-    
-    // 2. Shift back to historical local space 
-    g = GE.transformDatum(g, 'WGS84', 'Cape');
-    
-    // 3. Output to Clarke 1880 Lo system parameters
-    const lo = GE.geogToGrid(g.lat, g.lon, 0, 0, 1, cmTar, 'clarke1880');
-    res = { y: -lo.y, x: -lo.x };
-}
-
+			// 1. Lo29 uses Cape Datum (clarke1880)
+			let g = GE.gridToGeog(-y, -x, 0, 0, 1, cmOrg * (Math.PI/180), 'clarke1880');
+						
+			// 2. Project output onto WGS84 UTM system
+			res = GE.geogToGrid(g.lat, g.lon, 500000, 10000000, 0.9996, cmTar, 'clarke1880');
+		} else {
+			// 1. Ensure the Southern Hemisphere False Northing handles absolute mapping spaces cleanly
+			let g = GE.gridToGeog(y, x, 500000, 10000000, 0.9996, cmOrg * (Math.PI/180), 'clarke1880');
+			
+			// 2. FORCE LATITUDE COMPONENT POSITIVE BEFORE PASSING TO SOUTH-POSITIVE LO ENGINE
+			const absLat = Math.abs(g.lat);
+			
+			// 3. Output to Clarke 1880 Lo system parameters using absolute geographic space
+			const lo = GE.geogToGrid(absLat, g.lon, 0, 0, 1, cmTar, 'clarke1880');
+			
+			// 4. Align output coordinates with your target input values
+			res = { y: lo.y, x: lo.x };
+		}
     } else if (type === 'geo-Lo' || type === 'geo-UTM') {
         const lat = parseFloat(document.getElementById('geo_lat').value);
         const lon = parseFloat(document.getElementById('geo_lon').value);
         if (isNaN(lat) || isNaN(lon)) return alert("Please enter Lat/Lon coordinates.");
 
         if (type === 'geo-Lo') {
-            const lo = GE.geogToGrid(lat, lon, 0, 0, 1, cmTar);
+            const lo = GE.geogToGrid(lat, lon, 0, 0, 1, cmTar, 'clarke1880');
             res = { y: -lo.y, x: -lo.x };
         } else {
-            res = GE.geogToGrid(lat, lon, 500000, 10000000, 0.9996, cmTar);
+            res = GE.geogToGrid(lat, lon, 500000, 10000000, 0.9996, cmTar, 'clarke1880');
         }
     }
     alert(`Result:\nY: ${res.y.toFixed(3)}\nX: ${res.x.toFixed(3)}`);
@@ -2301,45 +2300,41 @@ function toggleMeasureTool() {
     }
 }
 
-mapLayer.on('click', function(e) {
-    //if (!window.isMeasuring) return;
+map.on('click', function(e) {
     if (window.isMeasuring) {
-    	handleMeasureClick(e.latlng);
-    	L.DomEvent.stopPropagation(e);
-    }
-
-    measurePoints.push(e.latlng);
+    	measurePoints.push(e.latlng);
     
-    if (measurePoints.length === 1) {
-        document.getElementById('status_text').innerText = "First point set. Click second point.";
-    } else if (measurePoints.length === 2) {
-        const p1 = measurePoints[0];
-        const p2 = measurePoints[1];
+    	if (measurePoints.length === 1) {
+        	document.getElementById('status_text').innerText = "First point set. Click second point.";
+    	} else if (measurePoints.length === 2) {
+        	const p1 = measurePoints[0];
+        	const p2 = measurePoints[1];
 
-        // 1. Calculate Distance (Meters)
-        const dist = map.distance(p1, p2);
+        	// 1. Calculate Distance (Meters)
+        	const dist = map.distance(p1, p2);
 
-        // 2. Calculate Bearing (True North)
-        // Standard formula: atan2(sin(Δλ)⋅cos(φ2), cos(φ1)⋅sin(φ2) − sin(φ1)⋅cos(φ2)⋅cos(Δλ))
-        const rad = Math.PI / 180;
-        const lat1 = p1.lat * rad, lat2 = p2.lat * rad;
-        const lon1 = p1.lng * rad, lon2 = p2.lng * rad;
-        const dLon = lon2 - lon1;
-        const y = Math.sin(dLon) * Math.cos(lat2);
-        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-        let brg = Math.atan2(y, x) * (180 / Math.PI);
-        brg = (brg + 360) % 360; // Normalize to 0-360
+		    // 2. Calculate Bearing (True North)
+		    // Standard formula: atan2(sin(Δλ)⋅cos(φ2), cos(φ1)⋅sin(φ2) − sin(φ1)⋅cos(φ2)⋅cos(Δλ))
+		    const rad = Math.PI / 180;
+		    const lat1 = p1.lat * rad, lat2 = p2.lat * rad;
+		    const lon1 = p1.lng * rad, lon2 = p2.lng * rad;
+		    const dLon = lon2 - lon1;
+		    const y = Math.sin(dLon) * Math.cos(lat2);
+		    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+		    let brg = Math.atan2(y, x) * (180 / Math.PI);
+		    brg = (brg + 360) % 360; // Normalize to 0-360
 
-        // 3. Draw the line
-        if (measureLine) map.removeLayer(measureLine);
-        measureLine = L.polyline([p1, p2], { color: 'var(--accent-gold)', weight: 3, dashArray: '5, 10' }).addTo(map);
+		    // 3. Draw the line
+		    if (typeof measureLine !== 'undefined' && measureLine) map.removeLayer(measureLine);
+		    measureLine = L.polyline([p1, p2], { color: 'var(--accent-gold)', weight: 3, dashArray: '5, 10' }).addTo(map);
 
-        // 4. Update Status
-        const result = `Join: ${dist.toFixed(3)}m @ ${COGO.degToDms(brg)}`;
-        document.getElementById('status_text').innerText = result;
-        
-        // Reset for next measurement
-        measurePoints = [];
+		    // 4. Update Status
+		    const result = `Join: ${dist.toFixed(3)}m @ ${COGO.degToDms(brg)}`;
+		    document.getElementById('status_text').innerText = result;
+		    
+		    // Reset for next measurement
+		    measurePoints = [];
+		}
     }
 });
 
@@ -2381,4 +2376,3 @@ function addMapCustomControls() {
 
     map.addControl(new CustomControl());
 }
-
