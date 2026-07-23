@@ -149,7 +149,7 @@ app.get('/api/points', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const search = req.query.search || ''; // Captures string from frontend input
+        const search = req.query.search || '';
         const offset = (page - 1) * limit;
 
         // Structured SQL wildcard layout array
@@ -166,7 +166,7 @@ app.get('/api/points', async (req, res) => {
         
         // 2. Synchronizes total pages pagination values matching search query constraints
         const countQuery = `
-            SELECT COUNT(*) FROM public.survey_points
+            SELECT COUNT(*) AS count FROM public.survey_points
             WHERE pt_no ILIKE $1;
         `;
 
@@ -224,6 +224,7 @@ app.get('/api/map-points', isAuthenticated, async (req, res) => {
         	properties: { pt_no:row.pt_no }
         }));
         
+        //res.json(result.rows);
         res.json({ type: 'FeatureCollection', features });
     } catch (err) {
         res.status(500).json({ error: err.message });
