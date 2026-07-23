@@ -1,6 +1,7 @@
 // Global variables
 let currentInputTarget = 'stn'; //Default target
 let currentPage = 1;
+let totalPagesCount = 1;
 let allPointsData = [];
 let areaPoints = [];
 let pointToDelete = null;
@@ -10,7 +11,7 @@ let runningAngleSum = 0;
 let map;
 let mapLayer;
 let currentSearchTerm = '';
-const pointsPerPage = 8;
+const pointsPerPage = 10;
 
 window.helmertPairs = [];
 window.tempOld = null;
@@ -1064,9 +1065,14 @@ async function savePointToDB(ptData) {
 	}
 }
 
-async function loadPoints(onlyMine = false) {
-    const url = onlyMine ? '/api/my-points' : '/api/points';
+async function loadPoints(page = 1, search = '', onlyMine = false) {
+    //const url = onlyMine ? '/api/my-points' : '/api/points';
     const status = document.getElementById('status_text');
+    
+    // Build the query parameter URL cleanly based on selected scope
+    let url = onlyMine 
+        ? `/api/my-points?page=${page}&limit=10&search=${encodeURIComponent(search)}`
+        : `/api/points?page=${page}&limit=10&search=${encodeURIComponent(search)}`;
     
     try {
         const response = await fetch(url);
@@ -1075,9 +1081,15 @@ async function loadPoints(onlyMine = false) {
         	return showLoginModal();
         }
         
-        allPointsData = await response.json();
-        currentPage = 1;
-        displayPage(1);
+        const data = await response.json();
+        
+        allPointsData = data.points || data;
+        currentPage = data.currentPage || page;
+        totalPagesCount = data.totalPages || 1;
+        
+        displayPage(currentPage);
+        updatePaginationControls()
+        
         status.innerText = "Database Loaded Successfully";
     } catch (err) {
         console.error("Load error:", err);
@@ -1123,12 +1135,6 @@ window.onload = async () => {
         const data = await response.json();
         
         if (data.loggedIn) {
-            //const loginBtn = document.getElementById('loginBtn');
-            //if (loginBtn) {
-            //	loginBtn.innerText = "LOGOUT";
-            //	loginBtn.onclick = handleLogout;
-            //}
-            
             document.getElementById('status_text').innerText = `Logged in as ${data.username}`;
             loadPoints();
             renderMapPoints();	// I added this
@@ -1289,10 +1295,7 @@ async function handleLogout() {
 document.getElementById('searchInput').addEventListener('input', debounce(function() {
     currentSearchTerm = this.value;
     
-    // Call your existing table fetch function, forcing it back to Page 1 with the new filter
-    if (typeof fetchAndRenderTable === 'function') {
-        fetchAndRenderTable(1, currentSearchTerm);
-    }
+    loadPoints(1, currentSearchTerm, false);
 }, 300)); // 300ms delay: waits until user stops typing for a split second
 
 // Simple utility function to prevent flooding your server with database requests
