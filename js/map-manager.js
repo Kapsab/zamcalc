@@ -97,7 +97,7 @@ async function renderMapPoints() {
         window.mapLayer = L.geoJSON(geojsonData, {
             pointToLayer: function (feature, latlng) {
                 return L.circleMarker(latlng, {
-                    radius: 5,
+                    radius: 3.5,
                     fillColor: "#c2a172", // Your brand gold accent color
                     color: "#000",
                     weight: 1,
