@@ -53,14 +53,41 @@ function initMap() {
 async function renderMapPoints() {
     try {
         const response = await fetch('/api/map-points');
-        const geojsonData = await response.json();
+        const rawRowsData = await response.json();
 
+        // 🔍 DIAGNOSTIC LOGGING
+        console.log("Raw points array received from server:", rawRowsData);
+
+        // Safeguard: Check if the server returned a valid array list
+        if (!Array.isArray(rawRowsData)) {
+            console.error("Expected an array but received:", rawRowsData);
+            return;
+        }
+
+        // Convert the database rows into a strictly standardized GeoJSON FeatureCollection
+        const geojsonData = {
+            type: "FeatureCollection",
+            features: rawRowsData.map(row => ({
+                type: "Feature",
+                geometry: row.location || row.geometry, // Fallback support for location fields
+                properties: {
+                    id: row.id,
+                    pt_no: row.pt_no
+                }
+            }))
+        };
+
+        // If a map layer exists from a previous render pass, wipe it clean first
+        if (window.mapLayer) {
+            map.removeLayer(window.mapLayer);
+        }
+
+        // Draw the points securely on the map viewport
         window.mapLayer = L.geoJSON(geojsonData, {
             pointToLayer: function (feature, latlng) {
-                // Create a clean circle marker instead of the default blue pin
                 return L.circleMarker(latlng, {
-                    radius: 3,
-                    fillColor: "#c2a172", // Your brand gold
+                    radius: 5,
+                    fillColor: "#c2a172", // Your brand gold accent color
                     color: "#000",
                     weight: 1,
                     opacity: 1,
@@ -69,33 +96,23 @@ async function renderMapPoints() {
             },
             onEachFeature: function (feature, layer) {
                 if (feature.properties && feature.properties.pt_no) {
-                    // Use bindTooltip for hover labels
                     layer.bindTooltip(`ID: ${feature.properties.pt_no}`, {
-                        permanent: false,   // Only show on hover
-                        direction: 'top',   // Position above marker
-                        className: 'map-tooltip', // Custom CSS class
-                        offset: [0, -10]    // Fine-tune position
+                        permanent: false,
+                        direction: 'top',
+                        offset: [0, -10]
                     });
                 }
-		        layer.on('click', function (e) {
-		        	// If the ruler tool is active
-		        	if (window.isMeasuring) {
-		        		// Stop the click from "bubbling up" to the map
-		        		L.DomEvent.stopPropagation(e);
-		        		// Send the marker'sexact location to the measure function
-		        		handleMeasureClick(e.latlng);
-		        	}
-		        });
-            }	
+            }
         }).addTo(map);
-        if (window.mapLayer.getLayers().length > 0) {
-        	zoomToAllPoints();
-        }
+
+        // Zoom map camera space to snap cleanly onto your coordinates limits boundary
+        zoomToAllPoints();
 
     } catch (err) {
         console.error("Map render error:", err);
     }
 }
+
 
 function zoomToAllPoints() {
     // Check if the map layer exists and has features
