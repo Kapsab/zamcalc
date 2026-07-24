@@ -145,10 +145,10 @@ app.post('/api/points', isAuthenticated, async (req, res) => {
     }
 });
 
-app.get('/api/points', async (req, res) => {
+app.get('/api/points', isAuthenticated, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 15;
         const search = req.query.search || '';
         const offset = (page - 1) * limit;
 
@@ -172,7 +172,6 @@ app.get('/api/points', async (req, res) => {
 
         const dataRes = await pool.query(dataQuery, [searchValue, limit, offset]);
         const countRes = await pool.query(countQuery, [searchValue]);
-
         const totalRows = parseInt(countRes.rows[0].count);
 
         res.json({

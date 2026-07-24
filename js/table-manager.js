@@ -527,3 +527,18 @@ async function handleBulkCSVUpload(event) {
 
     reader.readAsText(file);
 }
+
+function updateModalSRID(srid) {
+    document.getElementById('edit_srid').value = srid;
+    
+    const wgsBtn = document.getElementById('btn_wgs');
+    const arcBtn = document.getElementById('btn_arc');
+    
+    if (srid === 4326) {
+        wgsBtn.classList.add('active_sub');
+        arcBtn.classList.remove('active_sub');
+    } else {
+        arcBtn.classList.add('active_sub');
+        wgsBtn.classList.remove('active_sub');
+    }
+}
