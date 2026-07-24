@@ -121,15 +121,16 @@ function zoomToAllPoints() {
 
 function toggleMeasureTool() {
     window.isMeasuring = !window.isMeasuring;
-    measurePoints = [];
-    if (measureLine) map.removeLayer(measureLine);
+    //if (measureLine) map.removeLayer(measureLine);
     
     if (window.isMeasuring) {
         map.getContainer().style.cursor = 'crosshair';
-        document.getElementById('status_text').innerText = "Measure Tool Active: Click first point.";
+        document.getElementById('status_text').innerText = "📐 Ruler tool active: Click first point.";
     } else {
         map.getContainer().style.cursor = '';
-        document.getElementById('status_text').innerText = "Measure Tool Disabled.";
+        document.getElementById('status_text').innerText = "Ruler Tool Disabled.";
+        if (typeof measureLine !== 'undefined' && measureLine) map.removeLayer(measureLine);
+        measurePoints = [];
     }
 }
 

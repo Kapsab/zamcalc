@@ -3,7 +3,7 @@ let totalPagesCount = 1;
 let currentPage = 1;
 let allPointsData = [];
 let pointToDelete = null;
-const pointsPerPage = 8;
+const pointsPerPage = 15;
 
 function toggleTable(show) {
 	const modal = document.getElementById("table_modal");
