@@ -103,3 +103,17 @@ async function handleLogout() {
 	}
 	 
 }
+
+async function login(username, password) {
+	const response = await fetch('/api/login', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ username, password })
+	});
+	if (response.ok) {
+		document.getElementById('status_text').innerText = "Logged in as " + username;
+		// Reload points for this specific user
+	} else {
+		alert("Login failed");
+	}
+}

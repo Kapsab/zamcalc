@@ -278,17 +278,34 @@
 				</div>
 			</div>
 		</div>
-		<script src="main.js"></script>
+		<!-- 1. Third-Party Leaflet Visual Dependencies -->
+		<!--script src="https://unpkg.com"></script-->
+
+		<!-- 2. Core Mathematical Engines (Must load first so others can use them) -->
 		<script src="/js/geodetic-engine.js"></script>
+		<script src="/js/cogo-engine.js"></script>
+
+		<!-- 3. Interface & Management Modules -->
 		<script src="/js/map-manager.js"></script>
 		<script src="/js/table-manager.js"></script>
 		<script src="/js/auth-ui.js"></script>
 		<script src="about.js"></script>
+
+		<!-- 4. App Core / Orchestration Layer -->
+		<script src="/js/app-core.js"></script>
+
+		<!-- 5. App Initialization Call -->
 		<script>
 			document.addEventListener("DOMContentLoaded", () => {
 				initMap();
-				loadPoints(1, '', false);
+				// NOTE: Verify if your function is named fetchAndRenderTable or loadPoints
+				if (typeof loadPoints === 'function') {
+				    loadPoints(1, '', false);
+				} else if (typeof fetchAndRenderTable === 'function') {
+				    fetchAndRenderTable(1, '');
+				}
 			});
 		</script>
+
 	</body>
 </html>
