@@ -50,38 +50,56 @@ function addRowClickListeners() {
 }
 	
 function exportTableToCSV() {
-	let userInput = prompt("Enter a name for your file:", "survey_data");
-	
-	if (userInput === null || userInput === "");
-	let filename = userInput.endsWith(".csv") ? userInput : userInput + ".csv";
-	let csv = [];
-	// Get all rows from your points table
-	const rows = document.querySelectorAll(".table_area table tr");
-	
-	for (let i = 0; i < rows.length; i++) {
-		let row = [], cols = rows[i].querySelectorAll("td, th");
-		
-		for (let j = 0; j < cols.length; j++) 
-			row.push('"' + cols[j].innerText + '"'); // Wrap in quotes to handle commas
-		
-		csv.push(row.join(","));        
-	}
-
-	// Create a Blob and trigger download
-	const csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
-	const downloadLink = document.createElement("a");
-
-	downloadLink.download = filename;
-	downloadLink.href = window.URL.createObjectURL(csvFile);
-	downloadLink.style.display = "none";
-	document.body.appendChild(downloadLink);
-
-	downloadLink.click();
-	
-	// Cleanup: remove the link after clicking
-    document.body.removeChild(downloadLink);
+    const status = document.getElementById('status_text');
     
-	document.getElementById('status_text').innerText = "File exported: " + filename;
+    // 1. Safeguard: Check if we actually have any coordinate data arrays loaded
+    if (!allPointsData || allPointsData.length === 0) {
+        if (status) status.innerText = "❌ Export Failed: No survey data rows available to compile.";
+        alert("There is no point data loaded in the table to export!");
+        return;
+    }
+
+    // 2. Define clean land surveying header fields (No Action button columns!)
+    let csvContent = "Point ID,Easting (Y),Northing (X),Elevation (Z)\n";
+
+    // 3. Sequential formatting loop: Build strings straight from raw memory array data variables
+    allPointsData.forEach(p => {
+        // Strip out line breaks, spaces, or stray commas inside your text point numbers
+        const cleanPtNo = p.pt_no ? p.pt_no.toString().replace(/,/g, ' ').trim() : 'Unnamed';
+        const easting = parseFloat(p.easting).toFixed(3);
+        const northing = parseFloat(p.northing).toFixed(3);
+        const elevation = parseFloat(p.elevation || 0.000).toFixed(3);
+
+        csvContent += `"${cleanPtNo}",${easting},${northing},${elevation}\n`;
+    });
+
+    try {
+        // 4. Wrap text as a proper binary data stream blob mapping
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        
+        // Construct unique file signature matching local timestamps
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = `ZAMBAS_SurveyData_${timestamp}.csv`;
+
+        if (navigator.msSaveBlob) { // Ancient IE compatibility safeguard
+            navigator.msSaveBlob(blob, filename);
+        } else {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        if (status) status.innerText = `🎉 Successfully exported data to ${filename}`;
+    } catch (err) {
+        console.error("CSV compilation download crashed:", err);
+        if (status) status.innerText = "❌ Export Error: File download block failed.";
+    }
 }
 
 async function deletePoint(btn, id) {
