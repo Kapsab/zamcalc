@@ -135,18 +135,42 @@ app.post('/api/points/bulk-delete', isAuthenticated, async (req, res) => {
 });
 
 app.post('/api/points', isAuthenticated, async (req, res) => {
-    const { pt_no, easting, northing, elevation } = req.body;
+    const { pt_no, easting, northing, elevation, srid } = req.body;
     const userId = req.session.userId;
     
+    // Fallback default setting: Use Arc 1950 UTM35S (20935) if no custom CRS selection is supplied
+    const targetSRID = parseInt(srid) || 20935;
+
     try {
-        const query = `INSERT INTO survey_points (pt_no, easting, northing, elevation, user_id) VALUES ($1, $2::numeric, $3::numeric, $4::numeric, $5) RETURNING id, pt_no, ROUND(easting::numeric, 3) as easting, ROUND(northing::numeric, 3) as northing, ROUND(elevation::numeric, 3) as elevation`;
-        const result = await pool.query(query, [pt_no, easting, northing, elevation, userId]);
+        // Query structures the geometry using the exact client-specified projection code string
+        const query = `
+            INSERT INTO survey_points (pt_no, easting, northing, elevation, user_id, geom) 
+            VALUES (
+                $1, 
+                $2::numeric, 
+                $3::numeric, 
+                $4::numeric, 
+                $5,
+                CASE 
+                    -- If the user provides raw 4326 Lat/Lon, map it natively
+                    WHEN $6 = 4326 THEN ST_SetSRID(ST_MakePoint($2, $3), 4326)
+                    -- If the user provides South-Positive Lo coordinates (22287/22289), apply negative sign correction matrix variables
+                    WHEN $6 IN (22287, 22289) THEN ST_Transform(ST_SetSRID(ST_MakePoint(-$2, -$3), $6), 4326)
+                    -- For standard North-Positive metric plane grids (UTM 20935 / 32735)
+                    ELSE ST_Transform(ST_SetSRID(ST_MakePoint($2, $3), $6), 4326)
+                END
+            ) 
+            RETURNING id, pt_no, ROUND(easting::numeric, 3) as easting, ROUND(northing::numeric, 3) as northing, ROUND(elevation::numeric, 3) as elevation;
+        `;
+        
+        const result = await pool.query(query, [pt_no, easting, northing, elevation, userId, targetSRID]);
         res.status(201).json(result.rows[0]);
     } catch (err) {
-        console.error("Database Save Error:", err.message);
+        console.error("Database Save Error with CRS integration:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
+
 
 app.get('/api/points', isAuthenticated, async (req, res) => {
     try {

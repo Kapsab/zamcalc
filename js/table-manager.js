@@ -562,3 +562,50 @@ function updateModalSRID(srid) {
         wgsBtn.classList.remove('active_sub');
     }
 }
+
+async function handleIndividualPointSubmit(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    const status = document.getElementById('status_text');
+
+    const pt_no = document.getElementById('ind_pt_no').value.trim();
+    const easting = parseFloat(document.getElementById('ind_easting').value);
+    const northing = parseFloat(document.getElementById('ind_northing').value);
+    const elevation = parseFloat(document.getElementById('ind_elevation').value) || 0.000;
+    const srid = parseInt(document.getElementById('ind_crs_srid').value);
+
+    if (!pt_no || isNaN(easting) || isNaN(northing)) {
+        alert("Please ensure all primary coordinate components contain valid entry values!");
+        return;
+    }
+
+    if (status) status.innerText = `Calculating spatial geometries using EPSG:${srid}...`;
+
+    const pointPayload = { pt_no, easting, northing, elevation, srid };
+
+    try {
+        const response = await fetch('/api/points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pointPayload),
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            const savedPoint = await response.json();
+            if (status) status.innerText = `🎉 Successfully projected and saved Point ${savedPoint.pt_no}!`;
+            
+            // Clean out the form inputs cleanly for the next execution
+            document.getElementById('individualPointForm').reset();
+            
+            // Instantly refresh your data tables and map layer markers
+            if (typeof loadPoints === 'function') loadPoints(1, '', false);
+            if (typeof renderMapPoints === 'function') renderMapPoints();
+        } else {
+            const errData = await response.json();
+            alert(`Save failed: ${errData.error || 'Server processing error'}`);
+        }
+    } catch (err) {
+        console.error("Individual point creation loop crash:", err);
+        if (status) status.innerText = "❌ Database injection query failed.";
+    }
+}
