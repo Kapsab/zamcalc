@@ -535,7 +535,7 @@ function loadForm(tabName, optionName, evt) {
 }
 
 window.onload = async () => {
-	//initMap();	// Start the map first
+	initMap();	// Start the map first
     // A. SESSION CHECK
     try {
         const response = await fetch('/api/check-session');
