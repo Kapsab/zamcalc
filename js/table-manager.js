@@ -609,3 +609,33 @@ async function handleIndividualPointSubmit(event) {
         if (status) status.innerText = "❌ Database injection query failed.";
     }
 }
+
+// Modal Display Trigger Helpers
+function toggleSinglePointModal(show) {
+    const modal = document.getElementById('singlePointModal');
+    if (modal) modal.style.display = show ? 'block' : 'none';
+}
+
+function toggleBulkUploadModal(show) {
+    const modal = document.getElementById('bulkUploadModal');
+    if (modal) modal.style.display = show ? 'block' : 'none';
+}
+
+// Update your existing handleIndividualPointSubmit function success block to hide the popup:
+// Inside handleIndividualPointSubmit() success response loop:
+if (response.ok) {
+    const savedPoint = await response.json();
+    if (status) status.innerText = `Successfully saved Point ${pt_no}`;
+    
+    document.getElementById('individualPointForm').reset();
+    toggleSinglePointModal(false); // 🚀 AUTOMATIC POP-DOWN ON CALCULATE SUCCESS
+    
+    if (typeof loadPoints === 'function') loadPoints(1, '', false);
+    if (typeof renderMapPoints === 'function') renderMapPoints();
+}
+
+// Update your handleBulkCSVUpload handler to pop-down automatically as well:
+// Inside handleBulkCSVUpload() reader.onload complete block:
+status.innerText = `🎉 Successfully imported survey points!`;
+toggleBulkUploadModal(false); // 🚀 AUTOMATIC POP-DOWN ON FILE UPLOAD SUCCESS
+if (typeof loadPoints === 'function') loadPoints(1, '', false);

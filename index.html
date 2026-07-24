@@ -35,6 +35,12 @@
 				<button class="tab_link" onclick="openTab(event, 'tab_conversion')" data-tooltip="Coordinate Conversion">
 					<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v2H7v-2zm0 4h2v2H7v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2z""")/>></svg>
 				</button>
+				<button class="sidebar_btn" onclick="toggleSinglePointModal(true)" data-tooltip="Single Point Entry">
+					<svg viewBox="0 0 24 24" style="width:24px; height:24px; fill:currentColor;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+				</button>
+				<button class="sidebar_btn" onclick="toggleBulkUploadModal(true)" data-tooltip="Bulk CSV Upload">
+					<svg viewBox="0 0 24 24" style="width:24px; height:24px; fill:currentColor;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+				</button>
 				<button class="tab_link" onclick="openTab(event, 'tab_download')" data-tooltip="Download Data">
 					<svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z""")/>></svg>
 				</button>
@@ -76,57 +82,6 @@
 				<div id="my_content">
 					<div class="computation_menu" id="dynamic_sub_menu"></div>
 					<div class="main_content">
-						<!-- Individual point input -->
-						<div class="table_area" id="individualPointContainer" style="margin-top: 20px; padding: 15px; border-radius: var(--radius-standard); background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-							<h3 style="margin-top: 0; color: var(--primary-green);">Single Point Entry & CRS Override</h3>
-							<form id="individualPointForm" onsubmit="handleIndividualPointSubmit(event)">
-								<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
-									<div class="form_group">
-										<label>Point Identifier</label>
-										<input type="text" id="ind_pt_no" placeholder="e.g., KAF-01" required>
-									</div>
-									<div class="form_group">
-										<label>Easting (Y)</label>
-										<input type="number" step="0.001" id="ind_easting" placeholder="637500.000" required>
-									</div>
-									<div class="form_group">
-										<label>Northing (X)</label>
-										<input type="number" step="0.001" id="ind_northing" placeholder="8295000.000" required>
-									</div>
-									<div class="form_group">
-										<label>Elevation (Z)</label>
-										<input type="number" step="0.001" id="ind_elevation" value="0.000">
-									</div>
-									<div class="form_group" style="grid-column: span 2;">
-										<label>Target Spatial Reference (CRS)</label>
-										<select id="ind_crs_srid" required style="cursor: pointer;">
-											<option value="20935">Arc 1950 / UTM Zone 35S (Default Metric)</option>
-											<option value="22287">Cape / Lo27 (South-Positive Plane Grid)</option>
-											<option value="22289">Cape / Lo29 (South-Positive Plane Grid)</option>
-											<option value="32735">WGS 84 / UTM Zone 35S (Global Metric)</option>
-											<option value="4326">WGS 84 / Geographic (Raw Decimal Lat/Lon)</option>
-										</select>
-									</div>
-								</div>
-								<div style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
-									<button type="submit" class="calc_btn">💾 Compute & Save Point</button>
-								</div>
-							</form>
-						</div>
-						
-						<!-- Bulk CSV load -->
-					    <div class="bulk-upload-container">
-							<button type="button" class="tableBtn" onclick="document.getElementById('csvFileInput').click()">
-								📁 Bulk CSV Upload
-							</button>
-							<input type="file" id="csvFileInput" accept=".csv, .txt" style="display: none;" onchange="handleBulkCSVUpload(event)">
-						</div>
-						
-						<div class="calculator" id="calculator">
-						    <!-- Form updates here -->
-						</div>
-						<button class="view_data_btn" onclick="toggleTable(true)">Select from Table</button>
-														
 						<div class="table_area" id="table_modal">
 						    <div class="modal_header">
 						        <h3>Survey Points</h3>
@@ -168,6 +123,10 @@
 								</div>
 						    </div>	    
 						</div>						
+						<div class="calculator" id="calculator">
+						    <!-- Form updates here -->
+						</div>
+						<button class="view_data_btn" onclick="toggleTable(true)">Select from Table</button>
 					</div>
 				</div>
 			</div>
@@ -189,6 +148,72 @@
 					&copy; 2026 Kapansa Bwalya
 				</div>
 			</div>
+			
+			<!-- SINGLE POINT ENTRY MODAL CONTAINER -->
+			<div id="singlePointModal" class="table_area" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:6000; max-width:600px; width:92%; box-shadow: 0px 4px 20px rgba(0,0,0,0.3); border-radius: var(--radius-standard); overflow: hidden;">
+				<div class="modal_header" style="display: flex; justify-content: space-between; align-items: center; background: var(--primary-green); color: white; padding: 12px 15px;">
+					<h3 style="margin: 0; color: white;">Single Point Entry & CRS Override</h3>
+					<button type="button" class="close_modal" onclick="toggleSinglePointModal(false)" style="background: none; border: none; color: #ffffff !important; font-size: 20px; cursor: pointer; font-weight: bold;">✕</button>
+				</div>
+				<form id="individualPointForm" onsubmit="handleIndividualPointSubmit(event)" style="padding: 20px; background: white; margin: 0;">
+					<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+						<div class="form_group">
+						    <label>Point Identifier</label>
+						    <input type="text" id="ind_pt_no" placeholder="e.g., KAF-01" required>
+						</div>
+						<div class="form_group">
+						    <label>Easting (Y)</label>
+						    <input type="number" step="0.001" id="ind_easting" placeholder="637500.000" required>
+						</div>
+						<div class="form_group">
+						    <label>Northing (X)</label>
+						    <input type="number" step="0.001" id="ind_northing" placeholder="8295000.000" required>
+						</div>
+						<div class="form_group">
+						    <label>Elevation (Z)</label>
+						    <input type="number" step="0.001" id="ind_elevation" value="0.000">
+						</div>
+						<div class="form_group" style="grid-column: span 2;">
+						    <label>Target Spatial Reference (CRS)</label>
+						    <select id="ind_crs_srid" required style="cursor: pointer; padding: 10px; border-radius: var(--radius-standard); width: 100%;">
+						        <option value="20935">Arc 1950 / UTM Zone 35S (Default Metric)</option>
+						        <option value="22287">Cape / Lo27 (South-Positive Plane Grid)</option>
+						        <option value="22289">Cape / Lo29 (South-Positive Plane Grid)</option>
+						        <option value="32735">WGS 84 / UTM Zone 35S (Global Metric)</option>
+						        <option value="4326">WGS 84 / Geographic (Raw Decimal Lat/Lon)</option>
+						    </select>
+						</div>
+					</div>
+					<div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+						<button type="button" class="btn btn-secondary" onclick="toggleSinglePointModal(false)" style="background: #6c757d;">Cancel</button>
+						<button type="submit" class="calc_btn">Compute & Save</button>
+					</div>
+				</form>
+			</div>
+
+			<!-- BULK CSV UPLOAD MODAL CONTAINER -->
+			<div id="bulkUploadModal" class="table_area" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:6000; max-width:450px; width:92%; box-shadow: 0px 4px 20px rgba(0,0,0,0.3); border-radius: var(--radius-standard); overflow: hidden;">
+				<div class="modal_header" style="display: flex; justify-content: space-between; align-items: center; background: var(--primary-green); color: white; padding: 12px 15px;">
+					<h3 style="margin: 0; color: white;">Bulk CSV Dataset Import</h3>
+					<button type="button" class="close_modal" onclick="toggleBulkUploadModal(false)" style="background: none; border: none; color: #ffffff !important; font-size: 20px; cursor: pointer; font-weight: bold;">✕</button>
+				</div>
+				<div style="padding: 25px; background: white; text-align: center;">
+					<p style="margin-top: 0; color: var(--text-main); font-size: 14px; text-align: left; line-height: 1.5;">
+						Select a comma-separated text file (<strong>.csv</strong> or <strong>.txt</strong>) containing land survey data records formatted exactly in columns as:<br>
+						<code>pt_no, easting, northing, elevation</code>
+					</p>
+					<div style="margin: 25px 0;">
+						<button type="button" class="calc_btn" style="width: 100%; padding: 12px;" onclick="document.getElementById('csvFileInput').click()">
+						    📁 Choose File & Start Import
+						</button>
+						<input type="file" id="csvFileInput" accept=".csv, .txt" style="display: none;" onchange="handleBulkCSVUpload(event)">
+					</div>
+					<div style="display: flex; justify-content: flex-end;">
+						<button type="button" class="btn btn-secondary" onclick="toggleBulkUploadModal(false)" style="background: #6c757d; padding: 8px 15px;">Close</button>
+					</div>
+				</div>
+			</div>
+
 			
 			<!-- Login Modal -->
 			<div id="loginModal" class="table_area" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:3001; max-width:400px; width:90%;">
