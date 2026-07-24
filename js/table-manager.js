@@ -224,16 +224,13 @@ function debounce(func, delay) {
 }
 
 async function loadPoints(page = 1, search = '', onlyMine = false) {
-    //const url = onlyMine ? '/api/my-points' : '/api/points';
     const status = document.getElementById('status_text');
-    
-    // Build the query parameter URL cleanly based on selected scope
     let url = onlyMine 
         ? `/api/my-points?page=${page}&limit=10&search=${encodeURIComponent(search)}`
         : `/api/points?page=${page}&limit=10&search=${encodeURIComponent(search)}`;
     
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, { credentials: 'include' });
         if (response.status === 401) {
         	status.innerText = "Session expired. Please login.";
         	if (typeof toggleLoginModal === 'function') toggleLoginModal(true);
@@ -248,7 +245,6 @@ async function loadPoints(page = 1, search = '', onlyMine = false) {
         
         displayPage(currentPage);
         //updatePaginationControls();
-        
         //if (typeof renderMapPoints === "function") { renderMapPoints(allPointsData); }
         
         if (status) status.innerText = "Database Loaded Successfully";
