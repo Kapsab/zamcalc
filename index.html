@@ -279,6 +279,16 @@
 			</div>
 		</div>
 		<script src="main.js"></script>
+		<script src="/js/geodetic-engine.js"></script>
+		<script src="/js/map-manager.js"></script>
+		<script src="/js/table-manager.js"></script>
+		<script src="/js/auth-ui.js"></script>
 		<script src="about.js"></script>
+		<script>
+			document.addEventListener("DOMContentLoaded", () => {
+				initMap();
+				loadPoints(1, '', false);
+			});
+		</script>
 	</body>
 </html>

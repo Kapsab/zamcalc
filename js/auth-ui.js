@@ -1,0 +1,105 @@
+async function registerUser() {
+    // 1. Get references to the input elements themselves
+    const userField = document.getElementById('reg_user');
+    const passField = document.getElementById('reg_pass');
+
+    const user = userField.value;
+    const pass = passField.value;
+
+    try {
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+
+        if (response.ok) {
+            alert("Registration successful! You can now log in.");
+            toggleRegModal(false);
+        } else {
+            alert("Registration failed. Username might be taken.");
+        }
+    } catch (error) {
+        console.error("Network error during registration:", error);
+        alert("A network error occurred. Please try again.");
+    } finally {
+        // 2. CLEAR CREDENTIALS HERE (Runs automatically on success, failure, or crash)
+        userField.value = '';
+        passField.value = '';
+    }
+}
+
+function toggleRegModal(show) {
+    const regModal = document.getElementById('register_modal');
+    const loginModal = document.getElementById('loginModal');
+    const overlay = document.getElementById('modalOverlay');
+    const display = show ? 'block' : 'none';
+
+    // 1. Show/Hide the registration modal and overlay
+    regModal.style.display = display;
+    overlay.style.display = display;
+
+    // 2. If opening registration, hide the login modal automatically
+    if (show) {
+        loginModal.style.display = 'none';
+    }
+}
+
+// Toggle Modal Visibility
+function toggleLoginModal(show) {
+	const modal = document.getElementById('loginModal');
+	const overlay = document.getElementById('modalOverlay');
+	const display = show ? 'block' : 'none';
+	
+	modal.style.display = display;
+	overlay.style.display = display;
+}
+
+// Attach to Header Button
+document.getElementById('loginBtn').onclick = () => toggleLoginModal(true);
+
+// Handle Login Submission
+async function handleLogin(e) {
+	e.preventDefault();
+	const user = document.getElementById('login_user').value;
+	const pass = document.getElementById('login_pass').value;
+
+	try {
+		const response = await fetch('/api/login', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: user, password: pass })
+		});
+
+		if (response.ok) {
+			const data = await response.json();
+			toggleLoginModal(false);
+			document.getElementById('status_text').innerText = `Logged in as ${user} (${data.role})`;
+			document.getElementById('loginBtn').innerText = "LOGOUT";
+			document.getElementById('loginBtn').onclick = handleLogout;
+		} else {
+			alert("Invalid username or password!");
+		}
+	} catch (err) {
+		console.error("Login network error:", err);
+	}
+}
+
+async function handleLogout() {
+	// Tell the server to destroy the session
+	try {
+		const response = await fetch('/api/logout', { method: 'POST' });
+		if (response.ok) {
+			// Clear session and reset button
+			location.reload();
+		} else {
+			console.error("Logout failed on server");
+			// Force reload anyway to reset UI
+			location.reload();
+		}
+	} catch (err) {
+		console.error("Logout network error:", err);
+		location.reload();
+	}
+	 
+}

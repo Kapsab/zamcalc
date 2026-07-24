@@ -1,16 +1,13 @@
 // Global variables
 let currentInputTarget = 'stn'; //Default target
 let currentPage = 1;
-let totalPagesCount = 1;
 let allPointsData = [];
 let areaPoints = [];
 let pointToDelete = null;
 let measurePoints = [];
 let measureLine = null;
 let runningAngleSum = 0;
-let map;
 let mapLayer;
-let currentSearchTerm = '';
 const pointsPerPage = 8;
 
 window.helmertPairs = [];
@@ -92,53 +89,7 @@ const ProjCorrection = {
     }
 };
 
-function initMap() {
-	//---- Leaflet web map ----//
-	map = L.map('map', { zoomControl: false }).setView([-14.82563, 28.54925], 6);
-	L.control.zoom ({ position: 'topright' }).addTo(map);
-	L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		attribution: '&copy OpenStreetMap'
-	}).addTo(map);
-	addMapCustomControls();
-	
-	map.on('click', function(e) {
-		if (window.isMeasuring) {
-			measurePoints.push(e.latlng);
-		
-			if (measurePoints.length === 1) {
-		    	document.getElementById('status_text').innerText = "First point set. Click second point.";
-			} else if (measurePoints.length === 2) {
-		    	const p1 = measurePoints[0];
-		    	const p2 = measurePoints[1];
 
-		    	// 1. Calculate Distance (Meters)
-		    	const dist = map.distance(p1, p2);
-
-				// 2. Calculate Bearing (True North)
-				// Standard formula: atan2(sin(Δλ)⋅cos(φ2), cos(φ1)⋅sin(φ2) − sin(φ1)⋅cos(φ2)⋅cos(Δλ))
-				const rad = Math.PI / 180;
-				const lat1 = p1.lat * rad, lat2 = p2.lat * rad;
-				const lon1 = p1.lng * rad, lon2 = p2.lng * rad;
-				const dLon = lon2 - lon1;
-				const y = Math.sin(dLon) * Math.cos(lat2);
-				const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-				let brg = Math.atan2(y, x) * (180 / Math.PI);
-				brg = (brg + 360) % 360; // Normalize to 0-360
-
-				// 3. Draw the line
-				if (typeof measureLine !== 'undefined' && measureLine) map.removeLayer(measureLine);
-				measureLine = L.polyline([p1, p2], { color: 'var(--accent-gold)', weight: 3, dashArray: '5, 10' }).addTo(map);
-
-				// 4. Update Status
-				const result = `Join: ${dist.toFixed(3)}m @ ${COGO.degToDms(brg)}`;
-				document.getElementById('status_text').innerText = result;
-				
-				// Reset for next measurement
-				measurePoints = [];
-			}
-		}
-	});
-}
 
 function openTab(evt, tabName) {
 	let links = document.getElementsByClassName("tab_link");
@@ -1065,42 +1016,6 @@ async function savePointToDB(ptData) {
 	}
 }
 
-async function loadPoints(page = 1, search = '', onlyMine = false) {
-    //const url = onlyMine ? '/api/my-points' : '/api/points';
-    const status = document.getElementById('status_text');
-    
-    // Build the query parameter URL cleanly based on selected scope
-    let url = onlyMine 
-        ? `/api/my-points?page=${page}&limit=10&search=${encodeURIComponent(search)}`
-        : `/api/points?page=${page}&limit=10&search=${encodeURIComponent(search)}`;
-    
-    try {
-        const response = await fetch(url);
-        if (response.status === 401) {
-        	status.innerText = "Session expired. Please login.";
-        	return showLoginModal();
-        }
-        
-        const data = await response.json();
-        
-        allPointsData = data.points || data;
-        currentPage = data.currentPage || page;
-        totalPagesCount = data.totalPages || 1;
-        
-        displayPage(currentPage);
-        updatePaginationControls();
-        
-        if (typeof renderMapPoints === "function") { renderMapPoints(allPointsData); }
-        
-        if (status) status.innerText = "Database Loaded Successfully";
-        
-        return allPointsData;
-    } catch (err) {
-        console.error("Load error:", err);
-        status.innerText = "Error: Database Link Failed";
-    }
-}
-
 function updatePaginationControls() {
     // Synchronize boundaries cleanly matching variables
     const prevBtn = document.getElementById('prevPage');
@@ -1110,41 +1025,6 @@ function updatePaginationControls() {
     if (nextBtn) nextBtn.disabled = (currentPage >= totalPagesCount);
 }
 
-function displayPage(page) {
-    const tableBody = document.querySelector(".data_table tbody");
-    if (!tableBody) return;
-    
-    tableBody.innerHTML = "";	// Clear the existing rows before drawing new ones
-
-    allPointsData.forEach(p => {
-        addResultToTable(p.id, p.pt_no, p.easting, p.northing, p.elevation);
-    });
-
-    // Update UI info
-    currentPage = page;
-    
-    const pageInfoEl = document.getElementById('pageInfo');
-    if (pageInfoEl) { pageInfoEl.innerText = `Page ${page} of ${totalPagesCount}`; }
-    
-    // Disable buttons if at boundaries
-    const prevBtn = document.getElementById('prevPage');
-    const nextBtn = document.getElementById('nextPage');
-    
-    if (prevBtn) prevBtn.disabled = (page === 1);
-    if (nextBtn) nextBtn.disabled = (page >= totalPagesCount);
-}
-
-function nextPage() {
-    if (currentPage < totalPagesCount) {
-        loadPoints(currentPage + 1, currentSearchTerm, false);
-    }
-}
-
-function prevPage() {
-    if (currentPage > 1) {
-        loadPoints(currentPage - 1, currentSearchTerm, false);
-    }
-}
 
 window.onload = async () => {
 	initMap();	// Start the map first
@@ -1206,111 +1086,6 @@ async function login(username, password) {
 	}
 }
 
-async function registerUser() {
-    // 1. Get references to the input elements themselves
-    const userField = document.getElementById('reg_user');
-    const passField = document.getElementById('reg_pass');
-
-    const user = userField.value;
-    const pass = passField.value;
-
-    try {
-        const response = await fetch('/api/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, password: pass })
-        });
-
-        if (response.ok) {
-            alert("Registration successful! You can now log in.");
-            toggleRegModal(false);
-        } else {
-            alert("Registration failed. Username might be taken.");
-        }
-    } catch (error) {
-        console.error("Network error during registration:", error);
-        alert("A network error occurred. Please try again.");
-    } finally {
-        // 2. CLEAR CREDENTIALS HERE (Runs automatically on success, failure, or crash)
-        userField.value = '';
-        passField.value = '';
-    }
-}
-
-function toggleRegModal(show) {
-    const regModal = document.getElementById('register_modal');
-    const loginModal = document.getElementById('loginModal');
-    const overlay = document.getElementById('modalOverlay');
-    const display = show ? 'block' : 'none';
-
-    // 1. Show/Hide the registration modal and overlay
-    regModal.style.display = display;
-    overlay.style.display = display;
-
-    // 2. If opening registration, hide the login modal automatically
-    if (show) {
-        loginModal.style.display = 'none';
-    }
-}
-
-// Toggle Modal Visibility
-function toggleLoginModal(show) {
-	const modal = document.getElementById('loginModal');
-	const overlay = document.getElementById('modalOverlay');
-	const display = show ? 'block' : 'none';
-	
-	modal.style.display = display;
-	overlay.style.display = display;
-}
-
-// Attach to Header Button
-document.getElementById('loginBtn').onclick = () => toggleLoginModal(true);
-
-// Handle Login Submission
-async function handleLogin(e) {
-	e.preventDefault();
-	const user = document.getElementById('login_user').value;
-	const pass = document.getElementById('login_pass').value;
-
-	try {
-		const response = await fetch('/api/login', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username: user, password: pass })
-		});
-
-		if (response.ok) {
-			const data = await response.json();
-			toggleLoginModal(false);
-			document.getElementById('status_text').innerText = `Logged in as ${user} (${data.role})`;
-			document.getElementById('loginBtn').innerText = "LOGOUT";
-			document.getElementById('loginBtn').onclick = handleLogout;
-		} else {
-			alert("Invalid username or password!");
-		}
-	} catch (err) {
-		console.error("Login network error:", err);
-	}
-}
-
-async function handleLogout() {
-	// Tell the server to destroy the session
-	try {
-		const response = await fetch('/api/logout', { method: 'POST' });
-		if (response.ok) {
-			// Clear session and reset button
-			location.reload();
-		} else {
-			console.error("Logout failed on server");
-			// Force reload anyway to reset UI
-			location.reload();
-		}
-	} catch (err) {
-		console.error("Logout network error:", err);
-		location.reload();
-	}
-	 
-}
 
 // Attach this to your search bar in HTML or via JS
 document.getElementById('searchInput').addEventListener('input', debounce(function() {
@@ -2043,143 +1818,7 @@ function calculateSlopeCorrection() {
     document.getElementById('slp_corr').innerText = `TOTAL CORR: ${corr.toFixed(4)}m`;
 }
 
-const GeodeticEngine = {
-    // Spheroid Coefficients (Line 30020)
-    ellipsoids: {
-        clarke1880: {
-            a: 6378249.14533,	// Legal Clarke 1880 Modified
-            b: 6356514.96672,	// Corresponding semi-minor axis
-            esq: 0.006803511283, // Precise eccentricity squared
-            // Meridian distance coefficients for Clarke 1880
-            A: 6367386.6437, B: 16300.696, C: 17.387, D: 0.023	// Exact NGI meridian arc constants
-        },
-        wgs84: {
-            a: 6378137.0,
-            b: 6356752.314,
-            esq: 0.006694380,
-            // Meridian distance coefficients for WGS84
-            A: 6367449.146, B: 16038.509, C: 16.833, D: 0.022
-        }
-    },
 
-    // Grid to Geographicals (Lines 30800-30890)
-    gridToGeog: function(y, x, y0, x0, k0, lambda0, ellipName = 'clarke1880') {
-        const ellip = this.ellipsoids[ellipName];
-        let mf = (x - x0) / k0;
-        let fi = mf / ellip.A;
-        let dfi, mp;
-
-        // Iteration loop (Line 30830)
-        do {
-            mp = (ellip.A * fi - ellip.B * Math.sin(2 * fi) + ellip.C * Math.sin(4 * fi) - ellip.D * Math.sin(6 * fi));
-            dfi = (mf - mp) / (ellip.A - 2 * ellip.B * Math.cos(2 * fi));
-            fi += dfi;
-        } while (Math.abs(dfi) > 1e-12);
-
-        let nu = ellip.a / Math.sqrt(1 - ellip.esq * Math.pow(Math.sin(fi), 2));
-        let h = (y - y0) / (k0 * nu);
-        let eta2 = (ellip.esq * Math.pow(Math.cos(fi), 2)) / (1 - ellip.esq);
-        let t2 = Math.pow(Math.tan(fi), 2);
-
-        let lambda = lambda0 + (1 / Math.cos(fi)) * (h - (Math.pow(h, 3) / 6) * (1 + 2 * t2 + eta2));
-        let finalFi = fi - (1 + eta2) * Math.tan(fi) * ((Math.pow(h, 2) / 2) - (Math.pow(h, 4) / 24) * (5 + 3 * t2));
-
-        return { lat: finalFi * (180 / Math.PI), lon: lambda * (180 / Math.PI) };
-    },
-
-    // Geographicals to Grid (Lines 30900-30950)
-    geogToGrid: function(lat, lon, y0, x0, k0, lambda0Deg, ellipName = 'wgs84') {
-        const ellip = this.ellipsoids[ellipName];
-        let fi = lat * (Math.PI / 180);
-        let lambda = lon * (Math.PI / 180);
-        let lambda0 = lambda0Deg * (Math.PI / 180);
-
-        let j = (lambda - lambda0) * Math.cos(fi);
-        let eta2 = (ellip.esq * Math.pow(Math.cos(fi), 2)) / (1 - ellip.esq);
-        let t2 = Math.pow(Math.tan(fi), 2);
-        let mp = (ellip.A * fi - ellip.B * Math.sin(2 * fi) + ellip.C * Math.sin(4 * fi) - ellip.D * Math.sin(6 * fi));
-        let nu = ellip.a / Math.sqrt(1 - ellip.esq * Math.pow(Math.sin(fi), 2));
-
-        let y = y0 + (k0 * nu) * (j + (Math.pow(j, 3) / 6) * (1 - t2 + eta2));
-        let x = x0 + k0 * mp + (k0 * nu * Math.tan(fi)) * (Math.pow(j, 2) / 2);
-
-        return { y, x };
-    },
-    
-    // 3-Parameter Molodensky Datum Shift Engine (South African / Zambian Region)
-    transformDatum: function(g, fromDatum, toDatum) {
-        // Translation parameters between Cape Datum and WGS84
-        let dx = -136.0, dy = -108.0, dz = -292.0;
-        
-        // Invert signs if transforming backwards from WGS84 to Cape
-        if (fromDatum === 'WGS84' && toDatum === 'Cape') {
-            dx = 136.0; dy = 108.0; dz = 292.0;
-        }
-
-        // Standard Molodensky Geodetic Transform approximation formula
-        const latRad = g.lat * (Math.PI / 180);
-        const lonRad = g.lon * (Math.PI / 180);
-        
-        const a = 6378137.0; // Mean Reference Radius
-        const esq = 0.00669438;
-        
-        const rn = a / Math.sqrt(1 - esq * Math.pow(Math.sin(latRad), 2));
-        const rm = a * (1 - esq) / Math.pow(1 - esq * Math.pow(Math.sin(latRad), 2), 1.5);
-        
-        const dLat = (-dx * Math.sin(latRad) * Math.cos(lonRad) - dy * Math.sin(latRad) * Math.sin(lonRad) + dz * Math.cos(latRad)) / rm;
-        const dLon = (-dx * Math.sin(lonRad) + dy * Math.cos(lonRad)) / (rn * Math.cos(latRad));
-        
-        return {
-            lat: g.lat + dLat * (180 / Math.PI),
-            lon: g.lon + dLon * (180 / Math.PI)
-        };
-    }
-};
-
-function runCoordinateTransform(type) {
-    const cmOrg = parseFloat(document.getElementById('cm_origin')?.value);
-    const cmTar = parseFloat(document.getElementById('cm_target')?.value);
-    const GE = GeodeticEngine;
-    let res;
-
-    if (type === 'Lo-UTM' || type === 'UTM-Lo') {
-        const y = parseFloat(document.getElementById('stn_y').value);
-        const x = parseFloat(document.getElementById('stn_x').value);
-        if (isNaN(y) || isNaN(x)) return alert("Pick a point first!");
-
-        if (type === 'Lo-UTM') {
-			// 1. Lo29 uses Cape Datum (clarke1880)
-			let g = GE.gridToGeog(-y, -x, 0, 0, 1, cmOrg * (Math.PI/180), 'clarke1880');
-						
-			// 2. Project output onto WGS84 UTM system
-			res = GE.geogToGrid(g.lat, g.lon, 500000, 10000000, 0.9996, cmTar, 'clarke1880');
-		} else {
-			// 1. Ensure the Southern Hemisphere False Northing handles absolute mapping spaces cleanly
-			let g = GE.gridToGeog(y, x, 500000, 10000000, 0.9996, cmOrg * (Math.PI/180), 'clarke1880');
-			
-			// 2. FORCE LATITUDE COMPONENT POSITIVE BEFORE PASSING TO SOUTH-POSITIVE LO ENGINE
-			const absLat = Math.abs(g.lat);
-			
-			// 3. Output to Clarke 1880 Lo system parameters using absolute geographic space
-			const lo = GE.geogToGrid(absLat, g.lon, 0, 0, 1, cmTar, 'clarke1880');
-			
-			// 4. Align output coordinates with your target input values
-			res = { y: lo.y, x: lo.x };
-		}
-    } else if (type === 'geo-Lo' || type === 'geo-UTM') {
-        const lat = parseFloat(document.getElementById('geo_lat').value);
-        const lon = parseFloat(document.getElementById('geo_lon').value);
-        if (isNaN(lat) || isNaN(lon)) return alert("Please enter Lat/Lon coordinates.");
-
-        if (type === 'geo-Lo') {
-            const lo = GE.geogToGrid(lat, lon, 0, 0, 1, cmTar, 'clarke1880');
-            res = { y: -lo.y, x: -lo.x };
-        } else {
-            res = GE.geogToGrid(lat, lon, 500000, 10000000, 0.9996, cmTar, 'clarke1880');
-        }
-    }
-    alert(`Result:\nY: ${res.y.toFixed(3)}\nX: ${res.x.toFixed(3)}`);
-}
 
 function runDmsToDec() {
     const dms = parseFloat(document.getElementById('input_dms').value);
@@ -2200,52 +1839,7 @@ function runDecToDms() {
     document.getElementById('conv_res_label').innerText = "D° M' S\"";
 }
 
-async function renderMapPoints() {
-    try {
-        const response = await fetch('/api/map-points');
-        const geojsonData = await response.json();
 
-        window.mapLayer = L.geoJSON(geojsonData, {
-            pointToLayer: function (feature, latlng) {
-                // Create a clean circle marker instead of the default blue pin
-                return L.circleMarker(latlng, {
-                    radius: 3,
-                    fillColor: "#c2a172", // Your brand gold
-                    color: "#000",
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                });
-            },
-            onEachFeature: function (feature, layer) {
-                if (feature.properties && feature.properties.pt_no) {
-                    // Use bindTooltip for hover labels
-                    layer.bindTooltip(`ID: ${feature.properties.pt_no}`, {
-                        permanent: false,   // Only show on hover
-                        direction: 'top',   // Position above marker
-                        className: 'map-tooltip', // Custom CSS class
-                        offset: [0, -10]    // Fine-tune position
-                    });
-                }
-		        layer.on('click', function (e) {
-		        	// If the ruler tool is active
-		        	if (window.isMeasuring) {
-		        		// Stop the click from "bubbling up" to the map
-		        		L.DomEvent.stopPropagation(e);
-		        		// Send the marker'sexact location to the measure function
-		        		handleMeasureClick(e.latlng);
-		        	}
-		        });
-            }	
-        }).addTo(map);
-        if (window.mapLayer.getLayers().length > 0) {
-        	zoomToAllPoints();
-        }
-
-    } catch (err) {
-        console.error("Map render error:", err);
-    }
-}
 
 /**
  * Handles the measurement logic when a map or marker is clicked
@@ -2318,27 +1912,6 @@ function setDatum(srid) {
     document.getElementById('btn_arc').classList.toggle('active_sub', srid === 20935);
 }
 
-function zoomToAllPoints() {
-    // Check if the map layer exists and has features
-    if (window.mapLayer && window.mapLayer.getLayers().length > 0) {
-        const bounds = window.mapLayer.getBounds();
-        
-        // Ensure there is more than one point, otherwise fitBounds zooms too far in
-        if (bounds.getSouthWest().equals(bounds.getNorthEast())) {
-            // Only one point: center on it with a fixed zoom level
-            map.flyTo(bounds.getCenter(), 16);
-        } else {
-            // Multiple points: zoom to fit all with some padding
-            map.flyToBounds(bounds, {
-                padding: [50, 50], 
-                duration: 3.0      // Animation speed in seconds
-            });
-        }
-        document.getElementById('status_text').innerText = "Map fit to all points.";
-    } else {
-        document.getElementById('status_text').innerText = "No points available to zoom to.";
-    }
-}
 
 function toggleMeasureTool() {
     window.isMeasuring = !window.isMeasuring;
