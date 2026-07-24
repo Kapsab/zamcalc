@@ -62,72 +62,110 @@ function initAuthUIControls() {
 	}
 }
 
-// Handle Login Submission
 async function handleLogin(e) {
-	e.preventDefault();
-	const user = document.getElementById('login_user').value;
-	const pass = document.getElementById('login_pass').value;
+    if (e && e.preventDefault) e.preventDefault();
+    
+    const userField = document.getElementById('login_user');
+    const passField = document.getElementById('login_pass');
+    if (!userField || !passField) return;
 
-	try {
-		const response = await fetch('/api/login', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username: user, password: pass })
-		});
+    const user = userField.value;
+    const pass = passField.value;
 
-		if (response.ok) {
-			const data = await response.json();
-			toggleLoginModal(false);
-			document.getElementById('status_text').innerText = `Logged in as ${user} (${data.role})`;
-			document.getElementById('loginBtn').innerText = "LOGOUT";
-			document.getElementById('loginBtn').onclick = handleLogout;
-		} else {
-			alert("Invalid username or password!");
-		}
-	} catch (err) {
-		console.error("Login network error:", err);
-	}
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass }),
+            credentials: 'include' // Ensures the secure session cookie attaches safely
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            
+            // 1. Hide the login panel overlay
+            if (typeof toggleLoginModal === 'function') {
+                toggleLoginModal(false);
+            } else if (typeof closeLoginModal === 'function') {
+                closeLoginModal();
+            }
+
+            // 2. Clear out your input credentials from the screen safely
+            userField.value = '';
+            passField.value = '';
+
+            // 3. Update top-right navbar navigation status display blocks
+            const statusText = document.getElementById('status_text');
+            if (statusText) statusText.innerText = `Logged in as ${user} (${data.role})`;
+            
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.innerText = "LOGOUT";
+                loginBtn.onclick = handleLogout;
+            }
+
+            // 🚀 CRITICAL FIX: Force data execution pipelines to refresh immediately upon login success
+            console.log("Auth UI: Login confirmed. Initializing point render pass...");
+            if (typeof loadPoints === 'function') {
+                loadPoints(1, '', false); // Populates page 1 table rows
+            }
+            if (typeof renderMapPoints === 'function') {
+                renderMapPoints(); // Draws the 464 gold circle markers onto Leaflet canvas
+            }
+        } else {
+            alert("Invalid username or password!");
+        }
+    } catch (err) {
+        console.error("Login network error:", err);
+    }
+}
+
+// Keep this unified single function copy as an alias routing bridge in case other forms call it
+async function login(username, password) {
+    const userField = document.getElementById('login_user');
+    const passField = document.getElementById('login_pass');
+    if (userField && passField) {
+        userField.value = username;
+        passField.value = password;
+    }
+    await handleLogin();
 }
 
 async function handleLogout() {
-	// Tell the server to destroy the session
-	try {
-		const response = await fetch('/api/logout', { method: 'POST' });
-		if (response.ok) {
-			// Clear session and reset button
-			location.reload();
-		} else {
-			console.error("Logout failed on server");
-			// Force reload anyway to reset UI
-			location.reload();
-		}
-	} catch (err) {
-		console.error("Logout network error:", err);
-		location.reload();
-	}
-	 
-}
+    try {
+        const response = await fetch('/api/logout', { 
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            console.log("Auth UI: Session cleanly destroyed on cloud infrastructure.");
+        }
+    } catch (err) {
+        console.error("Logout network query failed:", err);
+    } finally {
+        // 🚀 OPTIMIZED STATE RESET: Wipe visual canvas memory instead of using location.reload
+        allPointsData = [];
+        currentPage = 1;
+        
+        if (window.mapLayer && map) {
+            map.removeLayer(window.mapLayer);
+            window.mapLayer = null;
+        }
+        
+        const tableBody = document.querySelector(".data_table tbody");
+        if (tableBody) tableBody.innerHTML = "";
 
-async function login(username, password) {
-	try {
-		const response = await fetch('/api/login', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username, password })
-		});
-		if (response.ok) {
-			alert("Login successfully!");
-			document.getElementById('status_text').innerText = "Logged in as " + username;
-			// Reload points for this specific user
-			if (typeof renderMapPoints === 'function') {
-				renderMapPoints();
-			}
-			if (typeof loadPoints === 'function') {
-				loadPoints(1, '', false);
-			}
-			closeLoginModal()
-		} else {
-			alert("Login failed. Invalid credentials.");
-		}
-	} catch (err) { console.error("Login session network error:", err); }
+        const statusText = document.getElementById('status_text');
+        if (statusText) statusText.innerText = "Logged out successfully.";
+
+        const loginBtn = document.getElementById('loginBtn');
+        if (loginBtn) {
+            loginBtn.innerText = "LOGIN";
+            loginBtn.onclick = () => { if (typeof toggleLoginModal === 'function') toggleLoginModal(true); };
+        }
+
+        // Force user straight to the login panel overlay
+        if (typeof toggleLoginModal === 'function') toggleLoginModal(true);
+    }
 }
