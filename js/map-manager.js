@@ -52,37 +52,48 @@ function initMap() {
 
 async function renderMapPoints() {
     try {
-        const response = await fetch('/api/map-points');
-        const rawRowsData = await response.json();
+        const response = await fetch('/api/map-points', { credentials: 'include' });
+        const incomingData = await response.json();
+
+        // 1. Silent safeguard if the request was made pre-authentication
+        if (incomingData && incomingData.error && incomingData.error.includes("Unauthorized")) {
+            console.log("Map: Waiting for user authentication before rendering points...");
+            return; 
+        }
 
         // 🔍 DIAGNOSTIC LOGGING
-        console.log("Raw points array received from server:", rawRowsData);
+        console.log("Data packet received by map engine:", incomingData);
 
-        // Safeguard: Check if the server returned a valid array list
-        if (!Array.isArray(rawRowsData)) {
-            console.error("Expected an array but received:", rawRowsData);
+        let geojsonData;
+
+        // 2. SMART PARSING: Check if the backend already wrapped it as a FeatureCollection
+        if (incomingData && incomingData.type === 'FeatureCollection') {
+            // Data is already perfect GeoJSON! Use it directly.
+            geojsonData = incomingData;
+        } else if (Array.isArray(incomingData)) {
+            // Data came as a raw database array: map it into GeoJSON format manually
+            geojsonData = {
+                type: "FeatureCollection",
+                features: incomingData.map(row => ({
+                    type: "Feature",
+                    geometry: row.location || row.geometry,
+                    properties: {
+                        id: row.id,
+                        pt_no: row.pt_no
+                    }
+                }))
+            };
+        } else {
+            console.error("Map: Received an unrecognized coordinate data format profile:", incomingData);
             return;
         }
 
-        // Convert the database rows into a strictly standardized GeoJSON FeatureCollection
-        const geojsonData = {
-            type: "FeatureCollection",
-            features: rawRowsData.map(row => ({
-                type: "Feature",
-                geometry: row.location || row.geometry, // Fallback support for location fields
-                properties: {
-                    id: row.id,
-                    pt_no: row.pt_no
-                }
-            }))
-        };
-
-        // If a map layer exists from a previous render pass, wipe it clean first
+        // 3. Clear old map markers layer if it exists from a previous render pass
         if (window.mapLayer) {
             map.removeLayer(window.mapLayer);
         }
 
-        // Draw the points securely on the map viewport
+        // 4. Draw the 464 points visually on your Leaflet map viewport layout
         window.mapLayer = L.geoJSON(geojsonData, {
             pointToLayer: function (feature, latlng) {
                 return L.circleMarker(latlng, {
@@ -105,13 +116,14 @@ async function renderMapPoints() {
             }
         }).addTo(map);
 
-        // Zoom map camera space to snap cleanly onto your coordinates limits boundary
+        // 5. Automatically focus and zoom the map camera view center to fit all 464 points perfectly
         zoomToAllPoints();
 
     } catch (err) {
-        console.error("Map render error:", err);
+        console.error("Map render engine error:", err);
     }
 }
+
 
 function zoomToAllPoints() {
     // Check if the map layer exists and has features
