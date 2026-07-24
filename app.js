@@ -31,10 +31,10 @@ app.use(session({
     resave: false,	// this prevents constant session overwrites
     saveUninitialized: false,
     cookie: {
-    	secure: isProduction && !req.headers.host.includes('localhost'),	// must be false for http://localhost
+    	secure: isProduction,	// must be false for http://localhost
     	maxAge: 1000 * 60 * 60 * 24,
     	httpOnly: true,
-    	sameSite: isProduction ? 'none' : 'lax'
+    	sameSite: 'lax'
     } // 24 hours session
 }));
 
