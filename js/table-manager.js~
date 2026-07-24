@@ -23,6 +23,7 @@ function setTarget(target) {
     if (window.innerWidth < 850) toggleTable(true);
 }
 
+// Add this 'click' listener inside your loop where you generate rows
 function addRowClickListeners() {
 	const rows = document.querySelectorAll(".data_table tbody tr");
 	rows.forEach(row => {
@@ -214,6 +215,7 @@ function initTableSearchListener() {
 	}, 300));
 }
 
+// Simple utility function to prevent flooding your server with database requests
 function debounce(func, delay) {
     let timeout;
     return function(...args) {
@@ -425,6 +427,7 @@ function addResultToTable(id, ptNo, y, x, level = "0.000") {
 	setTimeout(() => { row.style.backgroundColor = "transparent"; }, 2000);
 }
 
+// Bulk Delete Logic
 async function bulkDelete() {
     const checked = Array.from(document.querySelectorAll('.rowCheck:checked')).map(cb => cb.value);
     if (checked.length === 0) return alert("Select points first!");
@@ -443,6 +446,7 @@ async function bulkDelete() {
     } catch (err) { console.error(err); }
 }
 
+// Edit Modal Handlers
 function openEditModal(id, pt_no, y, x, z) {
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_pt_no').value = pt_no;

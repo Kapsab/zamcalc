@@ -113,6 +113,7 @@ async function renderMapPoints() {
     }
 }
 
+
 function zoomToAllPoints() {
     // Check if the map layer exists and has features
     if (window.mapLayer && window.mapLayer.getLayers().length > 0) {
