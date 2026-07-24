@@ -244,8 +244,8 @@ async function loadPoints(page = 1, search = '', onlyMine = false) {
         totalPagesCount = data.totalPages || 1;
         
         displayPage(currentPage);
-        //updatePaginationControls();
-        //if (typeof renderMapPoints === "function") { renderMapPoints(allPointsData); }
+        if (typeof updatePaginationControls === 'function') { updatePaginationControls(); }
+        if (typeof renderMapPoints === "function") { renderMapPoints(allPointsData); }
         
         if (status) status.innerText = "Database Loaded Successfully";
         
@@ -281,14 +281,20 @@ function displayPage(page) {
 }
 
 function nextPage() {
-    if (currentPage < totalPagesCount) {
-        loadPoints(currentPage + 1, currentSearchTerm, false);
+	const targetPage = parseInt(currentPage) || 1;
+	const maxPages = parseInt(totalPagesCount) || 1;
+	
+    if (targetPage < maxPages) {
+        loadPoints(targetPage + 1, currentSearchTerm, false);
+    } else {
+    	console.log("Pagination: Already standing on the final database entry line row.");
     }
 }
 
 function prevPage() {
-    if (currentPage > 1) {
-        loadPoints(currentPage - 1, currentSearchTerm, false);
+    const targetPage = parseInt(currentPage) || 1;
+    if (targetPage > 1) {
+        loadPoints(targetPage - 1, currentSearchTerm, false);
     }
 }
 

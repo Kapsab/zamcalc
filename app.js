@@ -6,6 +6,8 @@ const { Pool } = require('pg');
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
+
 const isProduction = process.env.NODE_ENV === 'production';
 
 const pool = new Pool({
@@ -30,6 +32,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'fallback_development_secret', // Replace with a strong random string
     resave: false,	// this prevents constant session overwrites
     saveUninitialized: false,
+    proxy: true,
     cookie: {
     	secure: isProduction,	// must be false for http://localhost
     	maxAge: 1000 * 60 * 60 * 24,
