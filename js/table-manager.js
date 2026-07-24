@@ -610,7 +610,6 @@ async function handleIndividualPointSubmit(event) {
     }
 }
 
-// Modal Display Trigger Helpers
 function toggleSinglePointModal(show) {
     const modal = document.getElementById('singlePointModal');
     if (modal) modal.style.display = show ? 'block' : 'none';
@@ -621,21 +620,71 @@ function toggleBulkUploadModal(show) {
     if (modal) modal.style.display = show ? 'block' : 'none';
 }
 
-// Update your existing handleIndividualPointSubmit function success block to hide the popup:
-// Inside handleIndividualPointSubmit() success response loop:
-if (response.ok) {
-    const savedPoint = await response.json();
-    if (status) status.innerText = `Successfully saved Point ${pt_no}`;
-    
-    document.getElementById('individualPointForm').reset();
-    toggleSinglePointModal(false); // 🚀 AUTOMATIC POP-DOWN ON CALCULATE SUCCESS
-    
-    if (typeof loadPoints === 'function') loadPoints(1, '', false);
-    if (typeof renderMapPoints === 'function') renderMapPoints();
+function handleBulkCSVUpload(event) {
+    const file = event.target.files[0];
+    const status = document.getElementById('status_text');
+    if (!file) return;
+
+    if (status) status.innerText = "Parsing uploaded file data records...";
+    const reader = new FileReader();
+
+    // 🚀 THE CRITICAL FIX: Explicitly mark 'async function' right here on the reader listener!
+    reader.onload = async function(e) {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/);
+        const uploadedPoints = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            const columns = line.split(',');
+            const pt_no = columns[0] ? columns[0].trim() : '';
+            const easting = parseFloat(columns[1]);
+            const northing = parseFloat(columns[2]);
+            const elevation = parseFloat(columns[3]) || 0.000;
+
+            if (pt_no && !isNaN(easting) && !isNaN(northing)) {
+                if (pt_no.toLowerCase() === 'pt_no' || pt_no.toLowerCase() === 'point') continue;
+                uploadedPoints.push({ pt_no, easting, northing, elevation });
+            }
+        }
+
+        if (uploadedPoints.length === 0) {
+            if (status) status.innerText = "❌ Upload Failed: No valid coordinate rows detected.";
+            return;
+        }
+
+        if (status) status.innerText = `Uploading ${uploadedPoints.length} points to server repository...`;
+        
+        let successCount = 0;
+        for (const pt of uploadedPoints) {
+            try {
+                // Now await is perfectly valid inside this async handler context loop
+                const response = await fetch('/api/points', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pt),
+                    credentials: 'include'
+                });
+                
+                if (response.ok) successCount++;
+            } catch (err) {
+                console.error(`Failed to inject line point: ${pt.pt_no}`, err);
+            }
+        }
+
+        if (status) status.innerText = `🎉 Successfully imported ${successCount} out of ${uploadedPoints.length} survey points!`;
+        
+        // Hide popup view automatically on operational success
+        toggleBulkUploadModal(false);
+        
+        if (typeof loadPoints === 'function') loadPoints(1, '', false);
+        if (typeof renderMapPoints === 'function') renderMapPoints();
+        
+        event.target.value = '';
+    };
+
+    reader.readAsText(file);
 }
 
-// Update your handleBulkCSVUpload handler to pop-down automatically as well:
-// Inside handleBulkCSVUpload() reader.onload complete block:
-status.innerText = `🎉 Successfully imported survey points!`;
-toggleBulkUploadModal(false); // 🚀 AUTOMATIC POP-DOWN ON FILE UPLOAD SUCCESS
-if (typeof loadPoints === 'function') loadPoints(1, '', false);
