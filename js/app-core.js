@@ -535,7 +535,7 @@ function loadForm(tabName, optionName, evt) {
 }
 
 window.onload = async () => {
-	initMap();	// Start the map first
+	//initMap();	// Start the map first
     // A. SESSION CHECK
     try {
         const response = await fetch('/api/check-session');
@@ -544,9 +544,8 @@ window.onload = async () => {
         if (data.loggedIn) {
             document.getElementById('status_text').innerText = `Logged in as ${data.username}`;
             
-            //const points = 
-            await loadPoints();
-            //renderMapPoints(points);	// I added this
+            if (typeof renderMapPoints === 'function') renderMapPoints();
+            if (typeof loadPoints === 'function') loadPoints(1, '', false);
         } else {
             toggleLoginModal(true);
         }
@@ -567,6 +566,4 @@ window.onload = async () => {
         const el = document.getElementById(id);
         if (el) el.value = "";
     });
-
-    //document.getElementById('status_text').innerText = "System Ready";
 };
