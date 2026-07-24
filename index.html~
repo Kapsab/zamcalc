@@ -175,7 +175,7 @@
 						</div>
 						<div class="form_group" style="grid-column: span 2;">
 						    <label>Target Spatial Reference (CRS)</label>
-						    <select id="ind_crs_srid" required style="cursor: pointer; padding: 8px 12px; border-radius: var(--radius); width: 100%;">
+						    <select id="ind_crs_srid" required style="cursor: pointer; padding: 10px; border-radius: var(--radius); width: 100%;">
 						        <option value="20935">Arc 1950 / UTM Zone 35S (Default Metric)</option>
 						        <option value="22287">Cape / Lo27 (South-Positive Plane Grid)</option>
 						        <option value="22289">Cape / Lo29 (South-Positive Plane Grid)</option>
