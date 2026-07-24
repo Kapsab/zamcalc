@@ -98,6 +98,14 @@
 						        </div>
 						    </div>
 						    
+						    <!-- Bulk CSV load -->
+						    <div class="bulk-upload-container">
+								<button type="button" class="btn btn-gold" onclick="document.getElementById('csvFileInput').click()">
+									📁 Bulk CSV Upload
+								</button>
+								<input type="file" id="csvFileInput" accept=".csv, .txt" style="display: none;" onchange="handleBulkCSVUpload(event)">
+							</div>
+						    
 						    <!-- TABLE AREA -->
 						    <div class="table_scroll">
 						        <table class="data_table">

@@ -472,3 +472,72 @@ function closeEditModal() {
     document.getElementById('modalOverlay').style.display = 'none';
 }
 
+async function handleBulkCSVUpload(event) {
+    const file = event.target.files[0];
+    const status = document.getElementById('status_text');
+    if (!file) return;
+
+    status.innerText = "Parsing uploaded file data records...";
+    const reader = new FileReader();
+
+    reader.onload = async function(e) {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/);
+        const uploadedPoints = [];
+
+        // Loop through each text line (Skipping row 1 if it contains alphabetical header text strings)
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            const columns = line.split(',');
+            // Schema format structure check: pt_no, easting, northing, elevation
+            const pt_no = columns[0]?.trim();
+            const easting = parseFloat(columns[1]);
+            const northing = parseFloat(columns[2]);
+            const elevation = parseFloat(columns[3]) || 0.000;
+
+            // Basic safety verification: ensure coordinate components are valid metric floating values
+            if (pt_no && !isNaN(easting) && !isNaN(northing)) {
+                // Skip text header descriptors like 'pt_no' or 'Easting'
+                if (pt_no.toLowerCase() === 'pt_no' || pt_no.toLowerCase() === 'point') continue;
+                
+                uploadedPoints.push({ pt_no, easting, northing, elevation });
+            }
+        }
+
+        if (uploadedPoints.length === 0) {
+            status.innerText = "❌ Upload Failed: No valid coordinate rows detected.";
+            return;
+        }
+
+        status.innerText = `Uploading ${uploadedPoints.length} points to server repository...`;
+        
+        // Loop sequentially through parsed inputs and execute automated saves
+        let successCount = 0;
+        for (const pt of uploadedPoints) {
+            try {
+                const response = await fetch('/api/points', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pt)
+                });
+                
+                if (response.ok) successCount++;
+            } catch (err) {
+                console.error(`Failed to inject line point: ${pt.pt_no}`, err);
+            }
+        }
+
+        status.innerText = `🎉 Successfully imported ${successCount} out of ${uploadedPoints.length} survey points!`;
+        
+        // Re-trigger global viewports updates to refresh layouts
+        if (typeof loadPoints === 'function') loadPoints(1, '', false);
+        if (typeof renderMapPoints === 'function') renderMapPoints();
+        
+        // Reset the file field container
+        event.target.value = '';
+    };
+
+    reader.readAsText(file);
+}
